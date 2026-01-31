@@ -140,7 +140,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     elif name == "list_registered_tools":
         tool_names = [tool.name for tool in agent.tools]
         if tool_names:
-            tools_text = "\n".join(f"- {name}" for name in tool_names)
+            tools_text = "\n".join(f"- {tool_name}" for tool_name in tool_names)
         else:
             tools_text = "No tools registered yet."
 
