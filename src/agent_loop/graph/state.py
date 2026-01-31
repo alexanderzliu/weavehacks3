@@ -6,6 +6,7 @@ See [LG1b] for typed state requirements.
 Contract: docs/contracts/langgraph-state.md
 """
 
+from operator import add
 from typing import Annotated
 
 from langchain_core.messages import AnyMessage
@@ -44,6 +45,11 @@ class AgentState(BaseModel):
     iteration: int = Field(default=0, description="Current loop iteration")
     max_iterations: int = Field(default=5, description="Max iterations allowed")
 
-    # Sub-agent outputs
-    evaluations: list[Evaluation] = Field(default_factory=list, description="Evaluator feedback")
-    rankings: list[Ranking] = Field(default_factory=list, description="Ranker output")
+    # Sub-agent outputs with reducers for append behavior
+    # [LG1b] Use `add` reducer to accumulate across iterations (see langgraph-state.md)
+    evaluations: Annotated[list[Evaluation], add] = Field(
+        default_factory=list, description="Evaluator feedback"
+    )
+    rankings: Annotated[list[Ranking], add] = Field(
+        default_factory=list, description="Ranker output"
+    )
