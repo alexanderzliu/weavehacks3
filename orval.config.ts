@@ -3,7 +3,7 @@ import { defineConfig } from "orval";
 export default defineConfig({
   agentLoop: {
     input: {
-      target: "http://localhost:8000/openapi.json",
+      target: "http://localhost:8000/v1/openapi.json",
     },
     output: {
       mode: "tags-split",
@@ -21,7 +21,7 @@ export default defineConfig({
   // React Query variant
   agentLoopReactQuery: {
     input: {
-      target: "http://localhost:8000/openapi.json",
+      target: "http://localhost:8000/v1/openapi.json",
     },
     output: {
       mode: "tags-split",

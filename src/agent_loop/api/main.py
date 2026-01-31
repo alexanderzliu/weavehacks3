@@ -13,6 +13,7 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,12 +36,15 @@ app = FastAPI(
     title="agent-loop",
     version="0.1.0",
     description="Self-improving agentic abstraction with Weave and LangGraph",
+    openapi_url="/v1/openapi.json",
+    docs_url="/v1/docs",
+    redoc_url="/v1/redoc",
     lifespan=lifespan,
 )
 
 # CORS middleware
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # type: ignore[arg-type]
     allow_origins=["*"],  # Configure appropriately for production
     allow_credentials=True,
     allow_methods=["*"],
@@ -54,8 +58,6 @@ app.include_router(loop_router)
 
 def main() -> None:
     """Run the server."""
-    import uvicorn
-
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
 

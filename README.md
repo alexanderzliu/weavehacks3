@@ -65,8 +65,12 @@ result = await agent.arun("Analyze AI trends")
 uv run agent-loop
 
 # Usage
-curl -X POST http://localhost:8000/agent/run -d '{"task": "Hello"}'
+curl -X POST http://localhost:8000/v1/loop/run -d '{"task": "Hello"}'
 ```
+
+### OpenAPI
+Docs are served at `http://localhost:8000/v1/docs` and the spec at
+`http://localhost:8000/v1/openapi.json`.
 
 ### MCP Server (Claude Code)
 ```bash

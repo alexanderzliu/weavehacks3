@@ -39,7 +39,7 @@ async def run_loop(request: RunLoopRequest) -> RunLoopResponse:
 ### Request/Response Models
 
 ```python
-# api/models.py
+# api/routes/v1/loop.py
 from pydantic import BaseModel
 
 class RunLoopRequest(BaseModel):
@@ -54,28 +54,16 @@ class RunLoopResponse(BaseModel):
     """Response from agent loop."""
     thread_id: str
     response: str
-    observations: list[Observation]
+    observations: list[ObservationResponse]
     iterations: int
-    evaluations: list[EvaluationSummary]
+    evaluations: list[EvaluationResponse]
 ```
 
 ### OpenAPI Generation
 
-FastAPI serves OpenAPI by default at `/openapi.json` and docs at `/docs` and `/redoc`.
-If you override `openapi_url`, keep Orval in sync with the new URL.
+FastAPI serves OpenAPI at `/v1/openapi.json` and docs at `/v1/docs`.
 
 **Source:** https://fastapi.tiangolo.com/tutorial/metadata/
-
-```python
-# api/main.py
-from fastapi import FastAPI
-
-app = FastAPI(
-    title="agent-loop",
-    version="0.1.0",
-    description="Self-improving agentic abstraction",
-)
-```
 
 ## Orval TypeScript Generation
 
@@ -88,7 +76,7 @@ import { defineConfig } from "orval";
 export default defineConfig({
   agentLoop: {
     input: {
-      target: "http://localhost:8000/openapi.json",
+      target: "http://localhost:8000/v1/openapi.json",
     },
     output: {
       mode: "tags-split",
@@ -122,37 +110,35 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("agent-loop")
 
 app = FastAPI()
-app.mount("/mcp", mcp.streamable_http_app())
+app.mount("/v1/mcp", mcp.streamable_http_app())
 ```
-
-If mounting into an existing ASGI app, run the MCP session manager in the app lifespan.
-
-**Source:** https://github.com/modelcontextprotocol/python-sdk/blob/main/README.md
 
 ### Stdio Entrypoint
 
 ```python
-# mcp/cli.py
-from mcp.server.fastmcp import FastMCP
+# mcp/server.py
+from mcp.server import Server
 
-mcp = FastMCP("agent-loop")
+async def run_server():
+    # ... setup stdio transport
+    pass
 
 if __name__ == "__main__":
-    mcp.run()  # Use standard MCP transports like stdio
+    asyncio.run(run_server())
 ```
 
 ```bash
 # Start stdio server
-uv run mcp run mcp/cli.py
+uv run agent-loop-mcp --stdio
 ```
 
 ## Python Package API
 
 ```python
-from agent_loop import AgentLoopClient
+from agent_loop import AgentLoop
 
-client = AgentLoopClient()
-result = client.run(task="Research prompt quality")
+agent = AgentLoop()
+result = await agent.arun("Research prompt quality")
 ```
 
 ## JSON Example Contracts

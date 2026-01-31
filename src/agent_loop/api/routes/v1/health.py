@@ -26,4 +26,4 @@ async def health() -> HealthResponse:
 @router.get("/")
 async def root() -> dict[str, str]:
     """Root endpoint for v1."""
-    return {"message": "agent-loop API", "docs": "/docs"}
+    return {"message": "agent-loop API", "docs": "/v1/docs"}
