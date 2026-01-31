@@ -7,8 +7,8 @@ Core standards:
 
 - Use Weave objects/ops and LangGraph state/graphs as primitives; do not reinvent
 - Clean Code requirements are strictly enforced; we follow DDD
-- Before editing or creating any file, read `docs/project-code-requirements.md`
-- Canonical reference: `docs/project-code-requirements.md`
+- Before editing or creating any file, read `docs/contracts/project-code-requirements.md`
+- Canonical reference: `docs/contracts/project-code-requirements.md`
 
 IMPORTANT: Use `ty` (astral-sh/ty) for Python type checking. Run `uv run ty check` before commits.
 
@@ -25,7 +25,7 @@ AGENTS.md is the index and enforcement surface. **All hashed rules must be state
 
 ## [LC1] Line Count Ceiling (Repo-Wide)
 
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 - [LC1a] All written, non-generated source files in this repository MUST be <= 350 lines (`wc -l`), including `AGENTS.md`
 - [LC1b] SRP Enforcer: This 350-line "stick" forces modularity (DDD/SRP); > 350 lines = too many responsibilities (see [MO1d])
 - [LC1c] Zero Tolerance: No edits allowed to files > 350 LOC (even legacy); you MUST split/retrofit before applying your change
@@ -71,7 +71,7 @@ AGENTS.md is the index and enforcement surface. **All hashed rules must be state
 - [CC1b] DRY: remove duplication
 - [CC1c] YAGNI: no speculative abstractions—earn complexity with proven need
 - [CC1d] Clean Architecture: dependencies point inward; domain is framework-free
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 
 ### [ID1] Idiomatic Patterns
 
@@ -79,7 +79,7 @@ AGENTS.md is the index and enforcement surface. **All hashed rules must be state
 - [ID1b] Custom patterns require strong justification
 - [ID1c] Don't reinvent: use Weave objects for observability, LangGraph for state/orchestration
 - [ID1d] Don't assume library behavior; confirm correct usage via docs
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 
 ### [FS1] File & Structure Standards
 
@@ -90,7 +90,7 @@ AGENTS.md is the index and enforcement surface. **All hashed rules must be state
 - [FS1e] Prefer existing utilities; no redundant wrappers
 - [FS1f] When touching large files, extract a seam; don't grow monoliths
 - [FS1g] No generic `*_utils/*_helper/*_common` grab bags
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 
 ### [MO1] Modularity & SRP
 
@@ -100,21 +100,21 @@ AGENTS.md is the index and enforcement surface. **All hashed rules must be state
 - [MO1d] Strict SRP: each class/function is "about one thing" and has one reason to change
 - [MO1e] Boundary rule: cross-module interaction happens only through explicit, typed contracts
 - [MO1f] Decision Logic: New feature → New file; Bug fix → Edit existing; Logic change → Extract/Replace
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 
 ### [ND1] Naming & Intent
 
 - [ND1a] Intent-revealing names only
 - [ND1b] Ban generic names (`data`, `info`, `value`, `item`, `obj`, `tmp`, etc.)
 - [ND1c] When touching legacy generic names, fix them in the same edit
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 
 ### [AB1] Abstraction Quality
 
 - [AB1a] No anemic wrappers/forwarders
 - [AB1b] New abstractions must earn reuse by removing real duplication
 - [AB1c] Delete unused code instead of keeping "just in case"
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 
 ### [RC1] No Silent Failures
 
@@ -122,7 +122,7 @@ AGENTS.md is the index and enforcement surface. **All hashed rules must be state
 - [RC1b] Investigate → understand → fix; no workarounds
 - [RC1c] Use typed exception handling; don't swallow root causes
 - [RC1d] Absolute ban on shims/workarounds to silence failures; fix at source or halt
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 
 ### [WV1] Weave Integration
 
@@ -163,7 +163,7 @@ AGENTS.md is the index and enforcement surface. **All hashed rules must be state
 - [AR1c] Adapters implement domain protocols; one adapter per external system
 - [AR1d] Application layer contains use cases; orchestrates domain + adapters
 - [AR1e] Flow: api/mcp → application → domain → adapters
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
 
 ### [TS1] Testing Standards
 
@@ -176,4 +176,4 @@ AGENTS.md is the index and enforcement surface. **All hashed rules must be state
 
 - [VR1a] Run `make validate` before any commit
 - [VR1b] Gates: Format check, Lint, Type check, Arch tests, Unit tests
-- Contract: `docs/project-code-requirements.md`
+- Contract: `docs/contracts/project-code-requirements.md`
