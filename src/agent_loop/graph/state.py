@@ -13,6 +13,9 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 
+# Named constant for default iteration limit [SM7]
+DEFAULT_MAX_ITERATIONS = 5
+
 
 class Evaluation(BaseModel):
     """Evaluation result from the evaluator agent."""
@@ -43,7 +46,9 @@ class AgentState(BaseModel):
     # Loop control
     response: str | None = Field(default=None, description="Final response")
     iteration: int = Field(default=0, description="Current loop iteration")
-    max_iterations: int = Field(default=5, description="Max iterations allowed")
+    max_iterations: int = Field(
+        default=DEFAULT_MAX_ITERATIONS, description="Max iterations allowed"
+    )
 
     # Sub-agent outputs with reducers for append behavior
     # [LG1b] Use `add` reducer to accumulate across iterations (see langgraph-state.md)
