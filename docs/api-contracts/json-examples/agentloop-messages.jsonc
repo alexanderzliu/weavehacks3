@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentloop-messages",
+  "_source": "langchain_core.messages",
+  "_description": "LangChain message serialization formats used by agent-loop.",
+
+  // HumanMessage
+  // https://api.python.langchain.com/en/latest/messages/langchain_core.messages.human.HumanMessage.html
+  "human_message": {
+    "type": "human",
+    "content": "What is the weather?"
+  },
+
+  // AIMessage (Text)
+  // https://api.python.langchain.com/en/latest/messages/langchain_core.messages.ai.AIMessage.html
+  "ai_message_text": {
+    "type": "ai",
+    "content": "It is sunny."
+  },
+
+  // AIMessage (Tool Call)
+  "ai_message_tool_call": {
+    "type": "ai",
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "get_weather",
+        "args": {
+          "city": "San Francisco"
+        },
+        "id": "call_abc123"
+      }
+    ]
+  },
+
+  // ToolMessage (Tool Result)
+  // https://api.python.langchain.com/en/latest/messages/langchain_core.messages.tool.ToolMessage.html
+  "tool_message": {
+    "type": "tool",
+    "content": "72 degrees and sunny",
+    "name": "get_weather",
+    "tool_call_id": "call_abc123"
+  },
+
+  // SystemMessage
+  // https://api.python.langchain.com/en/latest/messages/langchain_core.messages.system.SystemMessage.html
+  "system_message": {
+    "type": "system",
+    "content": "You are a helpful assistant."
+  }
+}

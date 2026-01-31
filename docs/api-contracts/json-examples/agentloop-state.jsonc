@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentloop-state",
+  "_source": "src/agent_loop/graph/state.py",
+  "_description": "Agent-loop AgentState - Pydantic model for LangGraph state.",
+
+  // Core conversation history (LangChain messages)
+  // See: https://python.langchain.com/docs/concepts/#messages
+  "messages": [
+    {
+      "type": "human",
+      "content": "Analyze recent AI trends"
+    },
+    {
+      "type": "ai",
+      "content": "",
+      "tool_calls": [
+        {
+          "name": "web_search",
+          "args": {
+            "query": "AI trends 2026"
+          },
+          "id": "call_123"
+        }
+      ]
+    },
+    {
+      "type": "tool",
+      "content": "Trend 1: Agentic workflows...",
+      "name": "web_search",
+      "tool_call_id": "call_123"
+    }
+  ],
+
+  // Task context
+  "task": "Analyze recent AI trends",
+
+  // Loop control
+  "response": null,
+  "iteration": 1,
+  "max_iterations": 5,
+
+  // Sub-agent outputs (Pydantic models)
+  "evaluations": [
+    {
+      "iteration": 1,
+      "evaluation": "Search results look promising but need more specific data on healthcare."
+    }
+  ],
+  "rankings": [
+    {
+      "iteration": 1,
+      "ranking": "Response A is better than Response B due to citation quality."
+    }
+  ]
+}

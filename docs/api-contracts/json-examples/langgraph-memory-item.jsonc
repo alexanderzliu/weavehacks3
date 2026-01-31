@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "langgraph-memory-item",
+  "_source": "https://langchain-ai.github.io/langgraph/concepts/persistence/#memory-store",
+  "_description": "LangGraph Memory Store Item structure for cross-thread storage.",
+  
+  "value": {
+    "pattern_type": "prompt_strategy",
+    "description": "When asking about trends, first search for recent articles then summarize",
+    "effectiveness_score": 0.85,
+    "usage_count": 12,
+    "examples": [
+      "Used successfully for 'AI trends' query",
+      "Used successfully for 'climate news' query"
+    ]
+  },
+  
+  "key": "pattern-07e0caf4-1631-47b7-b15f-65515d4c1843",
+  
+  "namespace": ["user-123", "patterns"],
+  
+  "created_at": "2026-01-30T10:00:00.000000+00:00",
+  "updated_at": "2026-01-31T12:00:00.000000+00:00",
+  
+  "_usage_notes": {
+    "store_put": "store.put(namespace, key, value)",
+    "store_search": "store.search(namespace)",
+    "semantic_search": "store.search(namespace, query='effective prompts', limit=3)"
+  }
+}

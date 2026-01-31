@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "weave-evaluation",
+  "_source": "https://docs.wandb.ai/weave/guides/core-types/evaluations",
+  "_description": "Weave Evaluation structure for systematic agent assessment.",
+  
+  "evaluation_name": "agent-quality-v1",
+  
+  "dataset": {
+    "_ref": "weave://entity/project/object/evaluation-examples:v1",
+    "row_count": 50
+  },
+  
+  "scorers": [
+    {
+      "name": "accuracy_score",
+      "description": "Measures factual accuracy of response"
+    },
+    {
+      "name": "completeness_score", 
+      "description": "Measures how completely the task was addressed"
+    }
+  ],
+  
+  "results": {
+    "summary": {
+      "accuracy_score": {
+        "mean": 0.85,
+        "std": 0.12
+      },
+      "completeness_score": {
+        "mean": 0.78,
+        "std": 0.15
+      }
+    },
+    "rows": [
+      {
+        "example_id": "0",
+        "output": {
+          "response": "The article covers alignment and safety concerns."
+        },
+        "scores": {
+          "accuracy_score": 0.9,
+          "completeness_score": 0.7
+        }
+      }
+    ]
+  },
+  
+  "_weave_metadata": {
+    "model_ref": "weave://entity/project/object/agent-model:v3",
+    "created_at": "2026-01-31T12:00:00.000000+00:00",
+    "duration_seconds": 45.2
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "weave-dataset",
+  "_source": "https://docs.wandb.ai/weave/guides/core-types/datasets",
+  "_description": "Weave Dataset structure for organizing evaluation examples.",
+  
+  "name": "evaluation-examples",
+  "description": "Examples for evaluating agent responses",
+  
+  "rows": [
+    {
+      "id": "0",
+      "task": "Summarize the key points of this article about AI safety.",
+      "expected": "The article discusses alignment, interpretability, and robustness.",
+      "metadata": {
+        "category": "summarization",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": "1",
+      "task": "What is the capital of France?",
+      "expected": "Paris",
+      "metadata": {
+        "category": "factual",
+        "difficulty": "easy"
+      }
+    }
+  ],
+  
+  "_weave_metadata": {
+    "ref": "weave://entity/project/object/evaluation-examples:v1",
+    "version": "v1",
+    "created_at": "2026-01-31T12:00:00.000000+00:00"
+  }
+}

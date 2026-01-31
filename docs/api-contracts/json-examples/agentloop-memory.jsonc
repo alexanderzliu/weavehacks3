@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentloop-memory",
+  "_source": "src/agent_loop/domain/models/memory.py",
+  "_description": "Agent-loop memory structures for persistence and learning.",
+
+  // PatternEntry
+  // A learned pattern from past interactions
+  "pattern_entry": {
+    "pattern_id": "pattern-abc123",
+    "pattern_type": "prompt_strategy",
+    "description": "For research tasks, use web_search first, then summarize findings",
+    "effectiveness_score": 0.88,
+    "usage_count": 15,
+    "last_used": "2026-01-31T12:00:00.000000+00:00",
+    "examples": [
+      "AI trends research - used search then summarize",
+      "Market analysis - used search then analyze"
+    ]
+  },
+
+  // FeedbackEntry
+  // Feedback on a specific response or action
+  "feedback_entry": {
+    "feedback_id": "feedback-xyz789",
+    "thread_id": "thread-user123-session456",
+    "target_type": "response",
+    "target_content": "Based on my research, the top AI trends...",
+    "quality_score": 0.85,
+    "reasoning": "Response was accurate and comprehensive but could be more concise",
+    "improvements": [
+      "Use more structured formatting",
+      "Add specific examples"
+    ],
+    "evaluator": "evaluator_agent",
+    "timestamp": "2026-01-31T12:00:05.000000+00:00"
+  },
+
+  // RankingEntry
+  // Ranking of responses for comparative learning
+  "ranking_entry": {
+    "ranking_id": "ranking-def456",
+    "task_summary": "Analyze AI trends and provide recommendations",
+    "responses": [
+      "Response A: Comprehensive with examples",
+      "Response B: Brief overview",
+      "Response C: Detailed but verbose"
+    ],
+    "scores": [0.9, 0.6, 0.75],
+    "criteria_used": ["accuracy", "completeness", "clarity"],
+    "ranker_notes": "Response A best balances comprehensiveness and readability",
+    "timestamp": "2026-01-31T12:00:10.000000+00:00"
+  }
+}

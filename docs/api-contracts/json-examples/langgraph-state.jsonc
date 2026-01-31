@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "langgraph-state",
+  "_source": "https://docs.langchain.com/oss/python/langgraph/graph-api#state",
+  "_description": "LangGraph State structure for agent loop orchestration.",
+  
+  "messages": [
+    {
+      "type": "human",
+      "content": "What are the latest AI trends?",
+      "id": "msg-001"
+    },
+    {
+      "type": "ai",
+      "content": "I'll research that for you.",
+      "id": "msg-002",
+      "tool_calls": [
+        {
+          "id": "call-001",
+          "name": "web_search",
+          "args": {"query": "AI trends 2026"}
+        }
+      ]
+    },
+    {
+      "type": "tool",
+      "content": "Results: Agents, multimodal, reasoning...",
+      "tool_call_id": "call-001",
+      "name": "web_search"
+    }
+  ],
+  
+  "task": "Analyze recent AI trends",
+  
+  "available_tools": [
+    {
+      "name": "web_search",
+      "description": "Search the web for information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {"type": "string"}
+        },
+        "required": ["query"]
+      }
+    }
+  ],
+  
+  "observations": [
+    {
+      "source": "tool:web_search",
+      "content": "Found 10 relevant articles about AI trends",
+      "timestamp": "2026-01-31T12:00:01.000000+00:00",
+      "metadata": {
+        "tool_call_id": "call-001",
+        "success": true
+      }
+    }
+  ],
+  
+  "decision": {
+    "type": "respond",
+    "reasoning": "Gathered sufficient information from search",
+    "response": "Based on my research, the top AI trends in 2026 are..."
+  },
+  
+  "response": "Based on my research, the top AI trends in 2026 are...",
+  
+  "iteration": 2,
+  "max_iterations": 5,
+  "thread_id": "thread-abc123"
+}
