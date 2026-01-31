@@ -23,7 +23,7 @@ from agent_loop.adapters.llm.factory import create_llm_provider
 from agent_loop.adapters.memory.weave_memory import WeaveMemoryStore
 from agent_loop.domain.ports.memory_store import MemoryStore
 from agent_loop.graph.orchestrator import build_orchestrator_graph
-from agent_loop.graph.state import AgentState
+from agent_loop.graph.state import DEFAULT_MAX_ITERATIONS, AgentState
 
 
 class AgentLoopResult:
@@ -50,7 +50,7 @@ class AgentLoop:
 
     def __init__(
         self,
-        provider: str = "openai",
+        provider: str | None = None,
         model: str | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
@@ -60,7 +60,8 @@ class AgentLoop:
         """Initialize the agent loop.
 
         Args:
-            provider: LLM provider (openai, ollama, together, groq, openai-compatible)
+            provider: LLM provider (openai, ollama, together, groq, openai-compatible).
+                      If None, auto-detects based on environment variables.
             model: Model name
             api_key: API key for provider
             base_url: Base URL for OpenAI-compatible endpoints
@@ -92,12 +93,12 @@ class AgentLoop:
         self._compiled = self._graph.compile()
         return self
 
-    @weave.op(call_display_name=lambda inputs: f"Agent Loop: {inputs['task'][:50]}")
+    @weave.op(call_display_name=lambda call: f"Agent Loop: {call.inputs['task'][:50]}")
     async def arun(
         self,
         task: str,
         thread_id: str | None = None,
-        max_iterations: int = 5,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
     ) -> AgentLoopResult:
         """Run the agent loop asynchronously.
 
@@ -136,7 +137,7 @@ class AgentLoop:
         self,
         task: str,
         thread_id: str | None = None,
-        max_iterations: int = 5,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
     ) -> AgentLoopResult:
         """Run the agent loop synchronously.
 
