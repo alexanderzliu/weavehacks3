@@ -12,7 +12,6 @@ Sources:
 
 import asyncio
 import sys
-from functools import lru_cache
 from typing import Any
 
 from langchain_core.messages import ToolMessage
@@ -21,15 +20,23 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from agent_loop.application.agent import AgentLoop
+from agent_loop.domain.exceptions import InvalidInputError
+from agent_loop.graph.state import DEFAULT_MAX_ITERATIONS
+from agent_loop.mcp.exception_handlers import handle_tool_error
 
 # Create server
 server = Server("agent-loop")
 
+# Agent cache keyed by provider:model
+_agents: dict[str, AgentLoop] = {}
 
-@lru_cache(maxsize=1)
-def get_agent() -> AgentLoop:
-    """Get or create the agent instance (singleton)."""
-    return AgentLoop()
+
+def _get_agent(provider: str | None = None, model: str | None = None) -> AgentLoop:
+    """Get or create an agent instance for the given provider/model combination."""
+    key = f"{provider or 'auto'}:{model or 'default'}"
+    if key not in _agents:
+        _agents[key] = AgentLoop(provider=provider, model=model)
+    return _agents[key]
 
 
 @server.list_tools()
@@ -53,8 +60,8 @@ async def list_tools() -> list[Tool]:
                     },
                     "max_iterations": {
                         "type": "integer",
-                        "description": "Maximum iterations (default: 5)",
-                        "default": 5,
+                        "description": f"Maximum iterations (default: {DEFAULT_MAX_ITERATIONS})",
+                        "default": DEFAULT_MAX_ITERATIONS,
                     },
                 },
                 "required": ["task"],
@@ -96,19 +103,28 @@ async def list_tools() -> list[Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-    """Handle tool calls."""
-    agent = get_agent()
+    """Handle tool calls.
+
+    Domain exceptions are caught and formatted via exception_handlers.
+    """
+    agent = _get_agent()
 
     if name == "run_agent":
         task = arguments.get("task", "")
-        thread_id = arguments.get("thread_id")
-        max_iterations = arguments.get("max_iterations", 5)
+        if not task:
+            raise InvalidInputError("task is required")
 
-        result = await agent.arun(
-            task=task,
-            thread_id=thread_id,
-            max_iterations=max_iterations,
-        )
+        thread_id = arguments.get("thread_id")
+        max_iterations = arguments.get("max_iterations", DEFAULT_MAX_ITERATIONS)
+
+        try:
+            result = await agent.arun(
+                task=task,
+                thread_id=thread_id,
+                max_iterations=max_iterations,
+            )
+        except Exception as exc:
+            return handle_tool_error(exc)
 
         response_text = f"""## Agent Response
 
@@ -146,8 +162,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         return [TextContent(type="text", text=f"## Registered Tools\n\n{tools_text}")]
 
-    else:
-        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+    raise InvalidInputError(f"Unknown tool: {name}")
 
 
 async def run_server() -> None:
