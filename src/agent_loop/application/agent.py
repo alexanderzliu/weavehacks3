@@ -91,7 +91,7 @@ class AgentLoop:
         self._compiled = self._graph.compile()
         return self
 
-    @weave.op(call_display_name="Agent Loop: {task[:50]}")
+    @weave.op(call_display_name=lambda inputs: f"Agent Loop: {inputs['task'][:50]}")
     async def arun(
         self,
         task: str,
@@ -110,10 +110,7 @@ class AgentLoop:
         """
         thread_id = thread_id or str(uuid.uuid4())
 
-        # Create initial state
-        # Note: We don't manually load history; LangGraph Checkpointer would handle this
-        # if we configured one. For MVP without checkpointer, we start fresh or
-        # would need to inject history into messages here.
+        # Create initial state (history persistence requires LangGraph Checkpointer)
         initial_state = AgentState(
             messages=[HumanMessage(content=task)],
             task=task,
@@ -122,7 +119,7 @@ class AgentLoop:
 
         # Run the graph
         config = {"configurable": {"thread_id": thread_id}}
-        final_state_dict = await self._compiled.ainvoke(initial_state, config=config)
+        final_state_dict = await self._compiled.ainvoke(initial_state, config=config)  # type: ignore[arg-type]
 
         # Parse result
         result_state = AgentState(**final_state_dict)

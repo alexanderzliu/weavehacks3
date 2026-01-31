@@ -6,11 +6,15 @@ Sources:
     - FastAPI Routing: https://fastapi.tiangolo.com/tutorial/bigger-applications/
 """
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 from langchain_core.messages import ToolMessage
 from pydantic import BaseModel, Field
 
 from agent_loop.application.agent import AgentLoop
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/loop", tags=["loop"])
 
@@ -97,5 +101,8 @@ async def run_loop(request: RunLoopRequest) -> RunLoopResponse:
             observations=observations,
             evaluations=evaluations,
         )
-    except Exception as exc:  # noqa: BLE001
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Agent loop failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
