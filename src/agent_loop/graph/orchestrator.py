@@ -11,7 +11,7 @@ Sources:
     - LangGraph Nodes: https://docs.langchain.com/oss/python/langgraph/graph-api#nodes
 """
 
-from typing import Literal
+from typing import Any, Literal, cast
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage
@@ -44,10 +44,10 @@ def route_after_evaluator(_state: AgentState) -> Literal["ranker"]:
 def route_after_decider(state: AgentState) -> Literal["agent", "__end__"]:
     """Route after decider node."""
     if state.response:
-        return END
+        return cast(Literal["__end__"], END)
 
     if state.iteration >= state.max_iterations:
-        return END
+        return cast(Literal["__end__"], END)
 
     return "agent"
 
@@ -89,11 +89,13 @@ def build_orchestrator_graph(
     graph = StateGraph(AgentState)
 
     # Add nodes
-    graph.add_node("agent", nodes["agent"])
-    graph.add_node("tools", nodes["tools"])
-    graph.add_node("evaluator", nodes["evaluator"])
-    graph.add_node("ranker", nodes["ranker"])
-    graph.add_node("decider", nodes["decider"])
+    # Casting nodes to Any to bypass strict type checking on NodeFunc vs StateNode mismatch
+    # LangGraph is flexible, but ty stubs are strict about RunnableConfig presence
+    graph.add_node("agent", cast(Any, nodes["agent"]))
+    graph.add_node("tools", cast(Any, nodes["tools"]))
+    graph.add_node("evaluator", cast(Any, nodes["evaluator"]))
+    graph.add_node("ranker", cast(Any, nodes["ranker"]))
+    graph.add_node("decider", cast(Any, nodes["decider"]))
 
     # Set entry point
     graph.set_entry_point("agent")

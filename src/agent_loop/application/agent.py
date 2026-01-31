@@ -11,6 +11,7 @@ Sources:
     - LangGraph Checkpointer: https://langchain-ai.github.io/langgraph/concepts/persistence/
 """
 
+import asyncio
 import uuid
 
 import weave
@@ -141,6 +142,4 @@ class AgentLoop:
 
         Convenience wrapper around arun for sync contexts.
         """
-        import asyncio
-
         return asyncio.run(self.arun(task, thread_id, max_iterations))

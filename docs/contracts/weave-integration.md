@@ -55,13 +55,26 @@ async def agent_node(state: AgentState) -> dict:
 
 ### Op Display Names
 
-Use the `name` parameter to set a clear operation name in traces:
+Use the `name` parameter to set a static operation name in traces:
 
 ```python
 @weave.op(name="execute_tool")
 def execute_tool(tool_name: str, args: dict) -> ToolResult:
     ...
 ```
+
+For dynamic display names based on inputs, use `call_display_name` with a callable:
+
+```python
+# call_display_name receives the inputs dict and returns a string
+@weave.op(call_display_name=lambda inputs: f"Agent Loop: {inputs['task'][:50]}")
+async def arun(self, task: str) -> AgentLoopResult:
+    ...
+```
+
+**Important:** `call_display_name` must be a callable (function/lambda), not a string.
+String interpolation syntax like `"{task[:50]}"` will NOT work because decorators
+are evaluated at definition time, not call time.
 
 **Source:** https://docs.wandb.ai/weave/guides/tracking/ops
 
