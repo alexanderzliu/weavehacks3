@@ -3,7 +3,7 @@
 The primary entry point for running the agent loop.
 Coordinates domain logic, adapters, and LangGraph orchestration.
 
-Contract: docs/project-code-requirements.md
+Contract: docs/contracts/project-code-requirements.md
 
 Sources:
     - Weave Init: https://docs.wandb.ai/weave/quickstart
