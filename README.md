@@ -65,7 +65,9 @@ result = await agent.arun("Analyze AI trends")
 uv run agent-loop
 
 # Usage
-curl -X POST http://localhost:8000/v1/loop/run -d '{"task": "Hello"}'
+curl -X POST http://localhost:8000/v1/loop/run \
+  -H "Content-Type: application/json" \
+  -d '{"task": "Hello"}'
 ```
 
 ### OpenAPI

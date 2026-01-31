@@ -14,7 +14,7 @@ IMPORTANT: Use `ty` (astral-sh/ty) for Python type checking. Run `uv run ty chec
 
 # agent-loop Agent Rules
 
-AGENTS.md is the index and enforcement surface. **All hashed rules must be stated succinctly in this file**. Supporting documentation lives under `docs/` by narrow topic (each file <= 350 LOC) and explains **how** and **why** when needed. `docs/agents/` must not exist.
+AGENTS.md (includes symlinks like CLAUDE.md) is the index and enforcement surface. **All hashed rules must be stated succinctly in this file**. Supporting documentation lives under `docs/` by narrow topic (each file <= 350 LOC) and explains **how** and **why** when needed. `docs/agents/` must not exist.
 
 ## Document Organization [ORG]
 
