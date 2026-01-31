@@ -3,8 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage
 
 from agent_loop.application.agent import AgentLoop
 

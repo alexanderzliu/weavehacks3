@@ -1,4 +1,4 @@
-.PHONY: all validate lint format typecheck test clean
+.PHONY: all validate lint format typecheck arch-test test clean
 
 # Default target
 all: validate
@@ -10,7 +10,7 @@ fix:
 	uv run ruff check --fix --unsafe-fixes src/ tests/
 	@echo "✅ Fix complete."
 
-# Full validation gate (CI equivalent) - fail fast (CI equivalent) - fail fast
+# Full validation gate (CI equivalent) - fail fast
 validate:
 	@echo "📝 1. Formatting..."
 	@make --no-print-directory format-check || { echo "❌ Formatting failed. Run 'make format' to fix."; exit 1; }
@@ -39,6 +39,10 @@ lint:
 # Type Checking
 typecheck:
 	uv run ty check
+
+# Architecture Tests
+arch-test:
+	uv run pytest tests/test_architecture.py -v
 
 # Testing
 test:
