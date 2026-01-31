@@ -9,25 +9,33 @@ Sources:
     - python-dotenv: https://saurabh-kumar.com/python-dotenv/
 """
 
-import os
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-
-import uvicorn
+# Load environment variables FIRST, before any other imports
+# This ensures env vars are available when modules read them at import time
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-from agent_loop.api.routes import health_router, loop_router
-
-# Load environment variables
 load_dotenv()
+
+import os  # noqa: E402
+from collections.abc import AsyncGenerator  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
+
+import uvicorn  # noqa: E402
+import weave  # noqa: E402
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+from agent_loop.api.exception_handlers import register_exception_handlers  # noqa: E402
+from agent_loop.api.routes import health_router, loop_router  # noqa: E402
+
+# Weave project name from env or default
+_WEAVE_PROJECT = os.getenv("WEAVE_PROJECT", "agent-loop")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
-    # Startup
+    # Startup: Initialize Weave once for the application
+    weave.init(_WEAVE_PROJECT)
     yield
     # Shutdown
 
@@ -50,6 +58,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Exception handlers (RFC 9457)
+register_exception_handlers(app)
 
 # Include routers
 app.include_router(health_router)
