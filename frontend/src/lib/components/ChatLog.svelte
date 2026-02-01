@@ -27,12 +27,14 @@
 					text: `${p.player_name || 'Player'}: "${p.content}"`,
 					type: 'speech'
 				};
-			case 'vote_cast':
+			case 'vote_cast': {
+				const target = p.target_name === 'no_lynch' ? 'no lynch' : p.target_name || 'someone';
 				return {
 					icon: '🗳️',
-					text: `${p.voter_name || 'Player'} voted for ${p.target_name || 'someone'}`,
+					text: `${p.voter_name || 'Player'} voted for ${target}`,
 					type: 'vote'
 				};
+			}
 			case 'lynch_result':
 				return {
 					icon: '⚖️',
@@ -49,6 +51,24 @@
 						: 'Everyone survived the night.',
 					type: p.killed_player_name ? 'death' : 'system'
 				};
+			case 'mafia_kill':
+				return {
+					icon: '🔪',
+					text: `Mafia targets ${p.target || 'unknown'}`,
+					type: 'night-action mafia'
+				};
+			case 'doctor_save':
+				return {
+					icon: '💉',
+					text: `Doctor protects ${p.target || 'unknown'}`,
+					type: 'night-action doctor'
+				};
+			case 'deputy_investigate':
+				return {
+					icon: '🔍',
+					text: `Deputy investigates ${p.target || 'unknown'}: ${p.result === 'bad' ? 'MAFIA!' : 'innocent'}`,
+					type: 'night-action deputy'
+				};
 			case 'day_started':
 				return { icon: '☀️', text: `Day ${p.day_number} begins`, type: 'system' };
 			case 'night_started':
@@ -60,6 +80,33 @@
 					icon: '🏆',
 					text: `Game over! ${p.winner === 'mafia' ? 'Mafia wins!' : 'Town wins!'}`,
 					type: 'system'
+				};
+			case 'reflection_started':
+				return {
+					icon: '🧠',
+					text: `${p.player_name || 'Player'} is reflecting on game ${p.game_number}...`,
+					type: 'reflection'
+				};
+			case 'reflection_completed':
+				return {
+					icon: p.status === 'success' ? '✅' : '❌',
+					text:
+						p.status === 'success'
+							? `Reflection complete (v${p.new_version}, ${p.items_count} insights)`
+							: `Reflection failed: ${p.reason || 'unknown error'}`,
+					type: 'reflection'
+				};
+			case 'cheatsheet_updated':
+				return {
+					icon: '📝',
+					text: `${p.player_name || 'Player'}'s strategy updated to v${p.version} (${p.items_count} insights)`,
+					type: 'reflection'
+				};
+			case 'error':
+				return {
+					icon: '⚠️',
+					text: `Error: ${p.message || 'Unknown error'}`,
+					type: 'error'
 				};
 			default:
 				return { icon: '📌', text: event.type, type: 'system' };
@@ -175,6 +222,56 @@
 
 	.chat-message.system .message-text {
 		color: var(--text-gold, #d4af37);
+	}
+
+	/* Night action styles */
+	.chat-message.night-action {
+		background: rgba(30, 30, 50, 0.4);
+		font-style: italic;
+	}
+
+	.chat-message.night-action.mafia {
+		border-left: 2px solid var(--color-mafia, #c41e3a);
+	}
+
+	.chat-message.night-action.mafia .message-text {
+		color: var(--color-mafia, #c41e3a);
+	}
+
+	.chat-message.night-action.doctor {
+		border-left: 2px solid #4a9e4a;
+	}
+
+	.chat-message.night-action.doctor .message-text {
+		color: #6abf6a;
+	}
+
+	.chat-message.night-action.deputy {
+		border-left: 2px solid var(--color-detective, #6b3fa0);
+	}
+
+	.chat-message.night-action.deputy .message-text {
+		color: var(--color-detective, #9b6fd0);
+	}
+
+	/* Reflection styles */
+	.chat-message.reflection {
+		border-left: 2px solid #5c8fbd;
+		background: rgba(92, 143, 189, 0.1);
+	}
+
+	.chat-message.reflection .message-text {
+		color: #7ab3e0;
+	}
+
+	/* Error styles */
+	.chat-message.error {
+		border-left: 2px solid #ff6b6b;
+		background: rgba(255, 107, 107, 0.1);
+	}
+
+	.chat-message.error .message-text {
+		color: #ff6b6b;
 	}
 
 	/* Scrollbar Styling - Noir Theme */

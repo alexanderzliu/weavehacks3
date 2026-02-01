@@ -123,6 +123,7 @@ class PlayerConfig(BaseModel):
     name: str
     model_provider: ModelProvider
     model_name: str
+    fixed_role: Optional[Role] = None
     initial_cheatsheet: Optional[Cheatsheet] = None
 
 

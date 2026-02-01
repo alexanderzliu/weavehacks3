@@ -4,31 +4,20 @@
   interface Props {
     speakerName: string;
     content: string;
+    audioBase64?: string | null;
     scaleFactor?: number;
+    onStreamComplete?: () => void;
   }
 
-  interface QueuedSpeech {
-    speakerName: string;
-    content: string;
-  }
-
-  let { speakerName, content, scaleFactor = 1 }: Props = $props();
-
-  // Queue of speeches waiting to be displayed
-  let speechQueue = $state<QueuedSpeech[]>([]);
-
-  // Currently displaying speech (separate from props)
-  let currentSpeech = $state<QueuedSpeech | null>(null);
+  let { speakerName, content, audioBase64 = null, scaleFactor = 1, onStreamComplete }: Props = $props();
 
   // Typewriter effect state
   let displayedCharCount = $state(0);
   let typewriterInterval: ReturnType<typeof setInterval> | null = null;
-  let postStreamDelay: ReturnType<typeof setTimeout> | null = null;
   const CHARS_PER_SECOND = 50;
   const INTERVAL_MS = 1000 / CHARS_PER_SECOND; // 20ms per character
-  const POST_STREAM_DELAY_MS = 500; // Brief pause after streaming before next speech
 
-  // Track last seen content to detect new speeches
+  // Track last seen content to detect changes
   let lastSeenContent = $state<string | null>(null);
 
   // Truncate helper
@@ -36,16 +25,21 @@
     return text.length > 800 ? text.slice(0, 797) + '...' : text;
   }
 
-  // Process the next speech in queue
-  function processNextSpeech() {
-    if (speechQueue.length === 0) {
-      return;
-    }
+  // The target content to stream
+  let targetContent = $derived(truncate(content));
 
-    // Pop the first speech from queue
-    const next = speechQueue[0];
-    speechQueue = speechQueue.slice(1);
-    currentSpeech = next;
+  // Track current audio for cleanup
+  let currentAudio: HTMLAudioElement | null = null;
+
+  // Start streaming when content changes
+  $effect(() => {
+    const newContent = content;
+
+    // Only restart if content actually changed
+    if (newContent === lastSeenContent) return;
+    lastSeenContent = newContent;
+
+    // Reset
     displayedCharCount = 0;
 
     // Clear any existing interval
@@ -54,11 +48,23 @@
       typewriterInterval = null;
     }
 
-    const targetContent = truncate(next.content);
+    // Stop any playing audio and play new audio if available
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+    if (audioBase64) {
+      try {
+        currentAudio = new Audio(`data:audio/wav;base64,${audioBase64}`);
+        currentAudio.play().catch(() => {}); // Silent failure
+      } catch {}
+    }
+
+    const target = truncate(newContent);
 
     // Start streaming
     typewriterInterval = setInterval(() => {
-      if (displayedCharCount < targetContent.length) {
+      if (displayedCharCount < target.length) {
         displayedCharCount++;
       } else {
         // Done streaming
@@ -66,42 +72,10 @@
           clearInterval(typewriterInterval);
           typewriterInterval = null;
         }
-
-        // Wait briefly, then process next speech if any
-        postStreamDelay = setTimeout(() => {
-          postStreamDelay = null;
-          if (speechQueue.length > 0) {
-            processNextSpeech();
-          }
-        }, POST_STREAM_DELAY_MS);
+        // Notify parent that streaming is complete
+        onStreamComplete?.();
       }
     }, INTERVAL_MS);
-  }
-
-  // When props change, queue the new speech
-  $effect(() => {
-    // Access props to create dependency
-    const newContent = content;
-    const newSpeaker = speakerName;
-
-    // Only queue if this is actually new content
-    if (newContent && newContent !== lastSeenContent) {
-      lastSeenContent = newContent;
-
-      const newSpeech: QueuedSpeech = {
-        speakerName: newSpeaker,
-        content: newContent
-      };
-
-      // If nothing is currently playing, start immediately
-      if (!currentSpeech && speechQueue.length === 0) {
-        speechQueue = [newSpeech];
-        processNextSpeech();
-      } else {
-        // Add to queue
-        speechQueue = [...speechQueue, newSpeech];
-      }
-    }
   });
 
   // Cleanup on destroy
@@ -109,24 +83,20 @@
     if (typewriterInterval) {
       clearInterval(typewriterInterval);
     }
-    if (postStreamDelay) {
-      clearTimeout(postStreamDelay);
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
     }
   });
 
   // The visible content based on typewriter progress
-  let displayContent = $derived(
-    currentSpeech ? truncate(currentSpeech.content).slice(0, displayedCharCount) : ''
-  );
-
-  // The currently displayed speaker name
-  let displaySpeaker = $derived(currentSpeech?.speakerName || speakerName);
+  let displayContent = $derived(targetContent.slice(0, displayedCharCount));
 </script>
 
 <div class="speech-bubble-container" style="--scale: {scaleFactor};">
   <div class="speech-bubble">
     <div class="bubble-header">
-      <span class="speaker-name">{displaySpeaker}</span>
+      <span class="speaker-name">{speakerName}</span>
     </div>
     <div class="bubble-content">
       {displayContent}

@@ -10,9 +10,11 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
+    CARTESIA_API_KEY: str = ""
 
     # Weave
     WANDB_API_KEY: str = ""
+    WEAVE_ENTITY: str = "williamacallahan-william-a-callahan-cfa"
     WEAVE_PROJECT: str = "mafia-ace"
 
     # Server

@@ -5,6 +5,7 @@ from typing import Optional
 from uuid import uuid4
 
 import weave
+from weave.trace.weave_client import Call
 
 from db.database import get_db_session
 from db import crud
@@ -21,8 +22,15 @@ from models.schemas import (
 from websocket.manager import ws_manager
 
 
-@weave.op()
-async def run_series(series_id: str) -> None:
+def _series_display_name(call: Call) -> str:
+    """Generate trace name: {series_name}-{yyyy-mm-dd}-{HH:MM}"""
+    series_name = call.inputs.get("series_name", "series")
+    timestamp = datetime.now().strftime("%Y-%m-%d-%H%M")
+    return f"{series_name}-{timestamp}"
+
+
+@weave.op(call_display_name=_series_display_name)
+async def run_series(series_id: str, series_name: str = "series") -> None:
     """Run a complete series of games with reflection."""
     # Load series data
     async with get_db_session() as db:
@@ -74,7 +82,18 @@ async def run_series(series_id: str) -> None:
 
             # Assign roles
             player_ids = [p.id for p in players]
-            await assign_roles(game_id, player_ids, game_seed)
+
+            # Build fixed_roles map from series config
+            config_players = series.config.get("players", [])
+            player_name_to_id = {p.name: p.id for p in players}
+            fixed_roles = {}
+            for pc in config_players:
+                if pc.get("fixed_role"):
+                    pid = player_name_to_id.get(pc["name"])
+                    if pid:
+                        fixed_roles[pid] = pc["fixed_role"]
+
+            await assign_roles(game_id, player_ids, fixed_roles, game_seed)
 
             # Run game
             runner = GameRunner(game_id, series_id, game_seed)
@@ -135,8 +154,8 @@ async def run_reflections(
     async with get_db_session() as db:
         game_players = await crud.get_game_players(db, game_id)
 
-    # Run reflections sequentially to manage LLM rate limits
-    for gp in game_players:
+    async def reflect_player(gp):
+        """Run reflection for a single player with error handling."""
         try:
             await pipeline.run_for_player(
                 player_id=gp.player.id,
@@ -161,3 +180,6 @@ async def run_reflections(
             async with get_db_session() as db:
                 await crud.create_game_event(db, event)
             await ws_manager.broadcast_event(series_id, event)
+
+    # Run all reflections in parallel
+    await asyncio.gather(*[reflect_player(gp) for gp in game_players])

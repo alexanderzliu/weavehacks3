@@ -50,6 +50,7 @@ export interface PlayerConfig {
 	name: string;
 	model_provider: ModelProvider;
 	model_name: string;
+	fixed_role?: Role;
 	initial_cheatsheet?: Cheatsheet;
 }
 

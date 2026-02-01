@@ -18,7 +18,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import weave
 
 from config import get_settings
-from game.evaluation import run_cheatsheet_evaluation, get_evaluation_summary
+
+# Import directly to avoid game/__init__.py which has heavy dependencies
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "evaluation",
+    os.path.join(os.path.dirname(__file__), "game", "evaluation.py")
+)
+evaluation_module = importlib.util.module_from_spec(spec)
+sys.modules["game.evaluation"] = evaluation_module
+spec.loader.exec_module(evaluation_module)
+run_cheatsheet_evaluation = evaluation_module.run_cheatsheet_evaluation
+get_evaluation_summary = evaluation_module.get_evaluation_summary
 
 
 async def main():

@@ -18,6 +18,7 @@
     currentSpeakerId: string | null;
     speechContent: string | null;
     speakerName: string | null;
+    speechAudioBase64?: string | null;
     votes: Map<string, string>; // voterId -> targetId
     showRoles?: boolean;
     cheatsheets?: Map<string, Cheatsheet>; // playerId -> cheatsheet
@@ -32,6 +33,7 @@
     currentSpeakerId,
     speechContent,
     speakerName,
+    speechAudioBase64 = null,
     votes,
     showRoles = false,
     cheatsheets = new Map(),
@@ -146,6 +148,7 @@
         <SpeechBubble
           speakerName={speakerName || 'Unknown'}
           content={speechContent}
+          audioBase64={speechAudioBase64}
           {scaleFactor}
           onStreamComplete={onSpeechComplete}
         />

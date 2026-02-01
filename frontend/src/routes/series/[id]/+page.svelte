@@ -129,12 +129,13 @@
 		const evts = displayEvents;
 		const lastSpeech = [...evts].reverse().find((e) => e.type === 'speech');
 		if (!lastSpeech) return null;
-		const payload = lastSpeech.payload as { content?: string; player_name?: string };
+		const payload = lastSpeech.payload as { content?: string; player_name?: string; audio_base64?: string };
 		// Use player_name as playerId since RoundTable uses names as player IDs
 		return {
 			playerId: payload.player_name || null,
 			playerName: payload.player_name || 'Unknown',
-			content: payload.content || ''
+			content: payload.content || '',
+			audioBase64: payload.audio_base64 || null
 		};
 	});
 
@@ -831,6 +832,7 @@
 						currentSpeakerId={displaySpeaker?.playerId || null}
 						speechContent={displaySpeaker?.content || null}
 						speakerName={displaySpeaker?.playerName || null}
+						speechAudioBase64={displaySpeaker?.audioBase64 || null}
 						votes={displayVotes}
 						showRoles={true}
 						cheatsheets={cheatsheetsForRoundTable}

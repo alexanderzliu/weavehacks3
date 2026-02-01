@@ -10,6 +10,7 @@ from db.database import get_db_session
 from db import crud
 from db.models import GamePlayer
 from game.llm import llm_client, LLMError
+from game.tts import tts_client
 from game.prompts import (
     GAME_CONTEXT_TEMPLATE,
     ROLE_INFO,
@@ -285,14 +286,22 @@ class GameRunner:
             print(f"LLM ERROR (_player_speech) for {player['name']}: {e}")
             content = "I have nothing to add at this time."
 
+        # Generate TTS audio (silent failure)
+        audio_base64 = await tts_client.generate_speech(content, player["name"])
+
         # Record in discussion
         self._day_discussion.append(f"{player['name']}: {content}")
+
+        # Build payload with optional audio
+        payload = {"content": content, "player_name": player["name"]}
+        if audio_base64:
+            payload["audio_base64"] = audio_base64
 
         await self._emit_event(
             EventType.SPEECH,
             Visibility.PUBLIC,
             actor_id=player["player_id"],
-            payload={"content": content, "player_name": player["name"]},
+            payload=payload,
         )
 
     @weave.op()
@@ -618,22 +627,43 @@ class GameRunner:
         return target
 
 
-async def assign_roles(game_id: str, player_ids: list[str], random_seed: Optional[int] = None) -> None:
-    """Assign roles to players for a game."""
+async def assign_roles(
+    game_id: str,
+    player_ids: list[str],
+    fixed_roles: Optional[dict[str, str]] = None,
+    random_seed: Optional[int] = None,
+) -> None:
+    """Assign roles to players for a game. Respects fixed_roles if provided."""
     rng = random.Random(random_seed)
     num_players = len(player_ids)
 
     if num_players not in ROLE_DISTRIBUTION:
         raise ValueError(f"Unsupported player count: {num_players}")
 
-    distribution = ROLE_DISTRIBUTION[num_players]
-    roles = []
+    distribution = dict(ROLE_DISTRIBUTION[num_players])
+    fixed_roles = fixed_roles or {}
+
+    # Validate and subtract fixed roles from distribution
+    for player_id, role in fixed_roles.items():
+        if distribution.get(role, 0) <= 0:
+            raise ValueError(f"Cannot assign fixed role '{role}': exceeds distribution limit")
+        distribution[role] -= 1
+
+    # Build remaining roles pool
+    remaining_roles = []
     for role, count in distribution.items():
-        roles.extend([role] * count)
+        remaining_roles.extend([role] * count)
+    rng.shuffle(remaining_roles)
 
-    rng.shuffle(roles)
-    rng.shuffle(player_ids)
+    # Get players needing random roles
+    players_needing_roles = [pid for pid in player_ids if pid not in fixed_roles]
+    rng.shuffle(players_needing_roles)
 
+    # Create assignments
     async with get_db_session() as db:
-        for player_id, role in zip(player_ids, roles):
+        for player_id in player_ids:
+            if player_id in fixed_roles:
+                role = fixed_roles[player_id]
+            else:
+                role = remaining_roles.pop()
             await crud.create_game_player(db, game_id, player_id, role)

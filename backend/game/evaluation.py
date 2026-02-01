@@ -7,6 +7,7 @@ Uses LLM-as-judge to score across multiple dimensions:
 - Decision quality (role-specific)
 - Overall cheatsheet helpfulness
 """
+from datetime import datetime
 from typing import Any, Optional
 
 import weave
@@ -375,6 +376,29 @@ async def run_cheatsheet_evaluation(
     if not rows:
         return {"error": "No completed games found", "rows": 0}
 
+    # Generate default eval name: eval-{game#}-{series_name}-{yyyy-mm-dd}
+    if not eval_name:
+        async with get_db_session() as db:
+            series = await crud.get_series(db, series_id)
+            series_name = series.name if series else series_id
+
+        # Format game numbers for the name
+        if game_numbers:
+            if len(game_numbers) == 1:
+                games_str = f"g{game_numbers[0]}"
+            else:
+                games_str = f"g{min(game_numbers)}-{max(game_numbers)}"
+        else:
+            # All games - use the range from the dataset
+            game_nums = sorted(set(r["game_number"] for r in rows))
+            if len(game_nums) == 1:
+                games_str = f"g{game_nums[0]}"
+            else:
+                games_str = f"g{min(game_nums)}-{max(game_nums)}"
+
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        eval_name = f"eval-{games_str}-{series_name}-{date_str}"
+
     # Create scorer
     scorer = CheatsheetScorer(
         model_provider=scorer_provider,
@@ -388,7 +412,7 @@ async def run_cheatsheet_evaluation(
     evaluation = weave.Evaluation(
         dataset=rows,
         scorers=[scorer],
-        name=eval_name or f"cheatsheet-eval-{series_id}",
+        name=eval_name,
     )
 
     # Run evaluation - this is properly traced as an Evaluation in Weave

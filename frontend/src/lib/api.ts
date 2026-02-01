@@ -22,6 +22,7 @@ export async function createSeries(config: {
 		name: string;
 		model_provider: string;
 		model_name: string;
+		fixed_role?: string;
 	}>;
 }): Promise<Response> {
 	return fetch(`${API_BASE}/series`, {
@@ -59,6 +60,16 @@ export async function fetchSeriesGames(seriesId: string): Promise<Response> {
 	return fetch(`${API_BASE}/series/${seriesId}/games`);
 }
 
-export async function fetchPlayerCheatsheet(playerId: string): Promise<Response> {
-	return fetch(`${API_BASE}/players/${playerId}/cheatsheet`);
+export async function fetchPlayerCheatsheet(
+	playerId: string,
+	gameNumber?: number
+): Promise<Response> {
+	const url = gameNumber !== undefined
+		? `${API_BASE}/players/${playerId}/cheatsheet?game_number=${gameNumber}`
+		: `${API_BASE}/players/${playerId}/cheatsheet`;
+	return fetch(url);
+}
+
+export async function fetchCheatsheetHistory(playerId: string): Promise<Response> {
+	return fetch(`${API_BASE}/players/${playerId}/cheatsheet/history`);
 }

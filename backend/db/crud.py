@@ -310,6 +310,33 @@ async def get_cheatsheet_history(db: AsyncSession, player_id: str) -> list[Cheat
     return list(result.scalars().all())
 
 
+async def get_cheatsheet_at_game(
+    db: AsyncSession,
+    player_id: str,
+    game_number: int,
+) -> Optional[Cheatsheet]:
+    """Get the cheatsheet that was in effect during a specific game.
+
+    During Game N, the player uses the cheatsheet with the highest version
+    where created_after_game is NULL (initial) or < N.
+    """
+    from sqlalchemy import or_
+
+    result = await db.execute(
+        select(Cheatsheet)
+        .where(Cheatsheet.player_id == player_id)
+        .where(
+            or_(
+                Cheatsheet.created_after_game.is_(None),
+                Cheatsheet.created_after_game < game_number,
+            )
+        )
+        .order_by(Cheatsheet.version.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 # ============ GameEvent CRUD ============
 
 async def create_game_event(db: AsyncSession, event: GameEventSchema) -> GameEvent:

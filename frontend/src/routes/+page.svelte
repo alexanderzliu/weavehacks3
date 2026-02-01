@@ -12,11 +12,11 @@
 	let formName = $state('AI Mafia Tournament');
 	let formTotalGames = $state(5);
 	let formPlayers = $state([
-		{ name: 'Alice', model_provider: 'openai', model_name: 'gpt-4o-mini' },
-		{ name: 'Bob', model_provider: 'openai', model_name: 'gpt-4o-mini' },
-		{ name: 'Charlie', model_provider: 'openai', model_name: 'gpt-4o-mini' },
-		{ name: 'Diana', model_provider: 'openai', model_name: 'gpt-4o-mini' },
-		{ name: 'Eve', model_provider: 'openai', model_name: 'gpt-4o-mini' }
+		{ name: 'Alice', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
+		{ name: 'Bob', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
+		{ name: 'Charlie', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
+		{ name: 'Diana', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
+		{ name: 'Eve', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' }
 	]);
 
 	onMount(async () => {
@@ -42,7 +42,12 @@
 			const res = await createSeries({
 				name: formName,
 				total_games: formTotalGames,
-				players: formPlayers
+				players: formPlayers.map((p) => ({
+					name: p.name,
+					model_provider: p.model_provider,
+					model_name: p.model_name,
+					fixed_role: p.fixed_role || undefined
+				}))
 			});
 			if (!res.ok) throw new Error('Failed to create series');
 			showCreateForm = false;
@@ -69,7 +74,8 @@
 				{
 					name: `Player ${formPlayers.length + 1}`,
 					model_provider: 'openai',
-					model_name: 'gpt-4o-mini'
+					model_name: 'gpt-4o-mini',
+					fixed_role: ''
 				}
 			];
 		}
@@ -159,6 +165,13 @@
 											placeholder="Model"
 											class="model-input"
 										/>
+										<select bind:value={player.fixed_role} class="role-select">
+											<option value="">Random</option>
+											<option value="mafia">Mafia</option>
+											<option value="doctor">Doctor</option>
+											<option value="deputy">Deputy</option>
+											<option value="townsperson">Townsperson</option>
+										</select>
 									</div>
 								</div>
 								{#if formPlayers.length > 5}
@@ -460,8 +473,12 @@
 
 	.player-model-row {
 		display: grid;
-		grid-template-columns: 140px 1fr;
+		grid-template-columns: 140px 1fr 110px;
 		gap: 0.5rem;
+	}
+
+	.role-select {
+		font-size: 0.875rem;
 	}
 
 	.model-input {
@@ -810,7 +827,11 @@
 		}
 
 		.player-model-row {
-			grid-template-columns: 1fr;
+			grid-template-columns: 1fr 1fr;
+		}
+
+		.role-select {
+			grid-column: span 2;
 		}
 
 		.series-grid {

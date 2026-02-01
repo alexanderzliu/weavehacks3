@@ -74,7 +74,7 @@ async def start_series(
     await db.commit()
 
     # Start series in background
-    task = asyncio.create_task(run_series(series_id))
+    task = asyncio.create_task(run_series(series_id, series.name))
     _running_series[series_id] = task
 
     return {"message": "Series started", "series_id": series_id}
@@ -214,14 +214,23 @@ async def get_game_events(
 @router.get("/players/{player_id}/cheatsheet", response_model=PlayerCheatsheetResponse)
 async def get_player_cheatsheet(
     player_id: str,
+    game_number: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get the current (latest version) cheatsheet for a player."""
+    """Get the cheatsheet for a player.
+
+    If game_number is provided, returns the cheatsheet that was in effect
+    during that game (for replay mode). Otherwise returns the latest version.
+    """
     player = await crud.get_player(db, player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    cheatsheet = await crud.get_latest_cheatsheet(db, player_id)
+    if game_number is not None:
+        cheatsheet = await crud.get_cheatsheet_at_game(db, player_id, game_number)
+    else:
+        cheatsheet = await crud.get_latest_cheatsheet(db, player_id)
+
     if not cheatsheet:
         raise HTTPException(status_code=404, detail="No cheatsheet found")
 
