@@ -60,7 +60,7 @@ class VoiceSessionManager:
             The created VoiceSession
         """
         from uuid import uuid4
-        from pipecat.pipeline import create_daily_room
+        from voice_pipeline.pipeline import create_daily_room
 
         async with self._lock:
             # Check if session already exists
@@ -71,11 +71,7 @@ class VoiceSessionManager:
                     return existing
 
             # Create Daily room for voice
-            try:
-                room_url, room_token = await create_daily_room()
-            except Exception as e:
-                print(f"Failed to create Daily room: {e}")
-                room_url, room_token = None, None
+            room_url, room_token = await create_daily_room()
 
             session = VoiceSession(
                 session_id=str(uuid4()),
