@@ -25,9 +25,13 @@ class ProviderConfig:
     api_key_placeholder: str | None = None  # For providers that don't need real keys
     detection_env: str | None = None  # Env var to check for auto-detection
     detection_priority: int = 100  # Lower = higher priority for auto-detection
+    # Env vars for lazy resolution (read at call time, not import time)
+    base_url_env: str | None = None  # Env var for base_url
+    default_model_env: str | None = None  # Env var for default_model
 
 
 # [CC1b] Registry pattern replaces type switch (>3 cases)
+# NOTE: Env vars are resolved lazily via _resolve_config() to avoid import-time issues
 _PROVIDER_REGISTRY: dict[str, ProviderConfig] = {
     "openai": ProviderConfig(
         default_model="gpt-4o",
@@ -38,7 +42,8 @@ _PROVIDER_REGISTRY: dict[str, ProviderConfig] = {
     "ollama": ProviderConfig(
         default_model="llama3.2",
         api_key_env="OLLAMA_API_KEY",
-        base_url=os.getenv("OLLAMA_HOST", "http://localhost:11434") + "/v1",
+        base_url="http://localhost:11434/v1",  # Default, overridden by env
+        base_url_env="OLLAMA_HOST",  # Lazy resolution
         api_key_placeholder="ollama",
         detection_env="OLLAMA_HOST",
         detection_priority=50,
@@ -58,13 +63,41 @@ _PROVIDER_REGISTRY: dict[str, ProviderConfig] = {
         detection_priority=30,
     ),
     "openai-compatible": ProviderConfig(
-        default_model=os.getenv("OPENAI_COMPATIBLE_MODEL", "gpt-4o"),
+        default_model="gpt-4o",  # Default, overridden by env
+        default_model_env="OPENAI_COMPATIBLE_MODEL",  # Lazy resolution
         api_key_env="OPENAI_COMPATIBLE_API_KEY",
-        base_url=os.getenv("OPENAI_COMPATIBLE_BASE_URL"),
+        base_url_env="OPENAI_COMPATIBLE_BASE_URL",  # Lazy resolution (required)
         detection_env="OPENAI_COMPATIBLE_BASE_URL",
         detection_priority=10,  # Highest priority (explicit custom endpoint)
     ),
 }
+
+
+def _resolve_config(config: ProviderConfig) -> tuple[str, str | None]:
+    """Resolve config values that may come from environment variables.
+
+    Called at runtime (not import time) to ensure dotenv has been loaded.
+
+    Returns:
+        Tuple of (resolved_model, resolved_base_url)
+    """
+    # Resolve default_model: env var overrides static default
+    resolved_model = config.default_model
+    if config.default_model_env:
+        resolved_model = os.getenv(config.default_model_env, config.default_model)
+
+    # Resolve base_url: env var overrides static value
+    resolved_base_url = config.base_url
+    if config.base_url_env:
+        env_value = os.getenv(config.base_url_env)
+        if env_value:
+            # OLLAMA_HOST needs /v1 suffix appended
+            if config.base_url_env == "OLLAMA_HOST":
+                resolved_base_url = env_value + "/v1"
+            else:
+                resolved_base_url = env_value
+
+    return resolved_model, resolved_base_url
 
 
 def _detect_default_provider() -> str:
@@ -114,8 +147,11 @@ def create_llm_provider(
     if not config:
         raise ValueError(f"Unknown provider: {resolved_provider}")
 
-    # Validate base_url for openai-compatible
-    resolved_base_url = base_url or config.base_url
+    # Resolve env vars at runtime (not import time)
+    config_model, config_base_url = _resolve_config(config)
+
+    # Use explicit params if provided, otherwise use resolved config
+    resolved_base_url = base_url or config_base_url
     if resolved_provider == "openai-compatible" and not resolved_base_url:
         raise ValueError("base_url required for openai-compatible provider")
 
@@ -124,6 +160,6 @@ def create_llm_provider(
 
     return ChatOpenAI(
         api_key=SecretStr(resolved_key),  # type: ignore[call-arg]
-        model=model or config.default_model,  # type: ignore[call-arg]
+        model=model or config_model,  # type: ignore[call-arg]
         base_url=resolved_base_url,  # type: ignore[call-arg]
     )
