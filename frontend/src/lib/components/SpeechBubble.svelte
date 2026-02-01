@@ -140,15 +140,22 @@
       // Play audio
       try {
         currentAudio = new Audio(`data:audio/wav;base64,${audioBase64}`);
+        currentAudio.onerror = (e) => {
+          console.error('[SpeechBubble] Audio decode error:', e);
+          audioComplete = true;
+          maybeComplete();
+        };
         currentAudio.onended = () => {
           audioComplete = true;
           maybeComplete();
         };
-        currentAudio.play().catch(() => {
-          // If audio fails to play, mark as complete
+        currentAudio.play().catch((err) => {
+          console.warn('[SpeechBubble] Audio playback blocked:', err.name, err.message);
           audioComplete = true;
+          maybeComplete();
         });
-      } catch {
+      } catch (err) {
+        console.error('[SpeechBubble] Audio creation failed:', err);
         audioComplete = true;
       }
     } else {
