@@ -3,6 +3,7 @@
   "$id": "weave-call",
   "_source": "https://docs.wandb.ai/weave/guides/tracking/ops",
   "_description": "Weave Call/Trace structure. Automatically captured when using @weave.op().",
+  "_terminology": "Weave 'call' = LangGraph 'step' (see metadata.step in langgraph-checkpoint.jsonc)",
 
   "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "op_name": "agent_node",

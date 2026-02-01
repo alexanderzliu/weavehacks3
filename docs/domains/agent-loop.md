@@ -14,49 +14,57 @@ See `AGENTS.md` ([AR1a-e], [LG1a-d], [WV1a-d]).
 ## Graph Flow
 
 ```
-                         ┌─────────┐
-                         │  START  │
-                         └────┬────┘
-                              │
-                              ▼
-                    ┌───────────────────┐
-                    │    AGENT NODE     │ ←──────────────────┐
-                    │    [LLM call]     │                    │
-                    └────────┬──────────┘                    │
-                             │                               │
-                   ┌─────────┴─────────┐                     │
-                   │   Tool calls?     │                     │
-                   └─────────┬─────────┘                     │
-                      YES    │    NO                         │
-                  ┌──────────┴──────────┐                    │
-                  ▼                     ▼                    │
-         ┌──────────────┐     ┌───────────────────┐          │
-         │  TOOLS NODE  │     │  EVALUATOR NODE   │          │
-         │  [execute]   │     │  [LLM call]       │          │
-         └──────┬───────┘     └────────┬──────────┘          │
-                │                      │                     │
-                │                      ▼                     │
-                │             ┌───────────────────┐          │
-                │             │   RANKER NODE     │          │
-                │             │   [LLM call]      │          │
-                │             └────────┬──────────┘          │
-                │                      │                     │
-                │                      ▼                     │
-                │             ┌───────────────────┐          │
-                │             │   DECIDER NODE    │          │
-                │             │   [logic only]    │          │
-                │             └────────┬──────────┘          │
-                │                      │                     │
-                │           ┌──────────┴──────────┐          │
-                │           │  Complete response? │          │
-                │           │  or at max iter?    │          │
-                │           └──────────┬──────────┘          │
-                │                YES   │   NO                │
-                │              ┌───────┴───────┐             │
-                │              ▼               └─────────────┘
-                │         ┌─────────┐
-                └────────▶│   END   │
-                          └─────────┘
+                              ┌─────────┐
+                              │  START  │
+                              └────┬────┘
+                                   │
+              AgentState           ▼           (agentloop-state.jsonc)
+         ┌────────────────────────────────────────────────────┐
+         │                                                    │
+         │  ┌───────────────────┐                             │
+         └─▶│    AGENT NODE     │◀────────────────────────┐   │
+            │ [LLM → AIMessage] │                         │   │
+            └────────┬──────────┘                         │   │
+                     │     (agentloop-messages.jsonc)     │   │
+           ┌─────────┴─────────┐                          │   │
+           │   Tool calls?     │                          │   │
+           └─────────┬─────────┘                          │   │
+              YES    │    NO                              │   │
+          ┌──────────┴──────────┐                         │   │
+          ▼                     ▼                         │   │
+ ┌──────────────┐     ┌───────────────────┐               │   │
+ │  TOOLS NODE  │     │  EVALUATOR NODE   │               │   │
+ │[→ToolMessage]│     │ [→ Evaluation]    │               │   │
+ └──────┬───────┘     └────────┬──────────┘               │   │
+        │                      │                          │   │
+        │                      ▼                          │   │
+        │             ┌───────────────────┐               │   │
+        │             │   RANKER NODE     │               │   │
+        │             │   [→ Ranking]     │               │   │
+        │             └────────┬──────────┘               │   │
+        │                      │                          │   │
+        │                      ▼                          │   │
+        │             ┌───────────────────┐               │   │
+        │             │   DECIDER NODE    │               │   │
+        │             │   [logic only]    │               │   │
+        │             └────────┬──────────┘               │   │
+        │                      │                          │   │
+        │           ┌──────────┴──────────┐               │   │
+        │           │  Complete response? │               │   │
+        │           │  or at max iter?    │               │   │
+        │           └──────────┬──────────┘               │   │
+        │                YES   │   NO                     │   │
+        │              ┌───────┴───────┐                  │   │
+        │              ▼               └──────────────────┘   │
+        │         ┌─────────┐              (iterate)          │
+        │         │   END   │                                 │
+        │         └────┬────┘                                 │
+        │              │                                      │
+        └──────────────┼──────────────────────────────────────┘
+                       │  (process tool results)
+                       ▼
+              langgraph-checkpoint.jsonc  (persisted state)
+              weave-call.jsonc            (traced operations)
 ```
 
 ## LLM Calls Per Request
@@ -69,15 +77,27 @@ See `AGENTS.md` ([AR1a-e], [LG1a-d], [WV1a-d]).
 
 ## Domain Concepts
 
-- **AgentState**: Typed Pydantic state (task, messages, evaluations, rankings, response).
+- **AgentState** (`agentloop-state.jsonc`): Typed Pydantic state (task, messages, evaluations, rankings, response).
+- **Messages** (`agentloop-messages.jsonc`): HumanMessage, AIMessage, ToolMessage from LangChain.
+- **Evaluation**: Assessor output stored in `AgentState.evaluations[]`.
+- **Ranking**: Comparative analysis stored in `AgentState.rankings[]`.
 - **Early Termination**: Decider exits if agent provides complete response (≥10 chars, no tools).
-- **Observation**: Result of tool execution, stored as ToolMessage.
-- **Evaluation**: Assessor output analyzing progress, quality, efficiency.
-- **Ranking**: Comparative analysis across iterations.
 
 ## Thread Continuity
 
-LangGraph uses `thread_id` in the `configurable` config for thread persistence.
-This allows returning to prior state for the same conversation.
+LangGraph and Weave use **ID-based grouping** (no explicit container objects).
 
-**Source:** https://langchain-ai.github.io/langgraph/concepts/persistence/
+**Terminology**: Weave `call` = LangGraph `step` (see `metadata.step` in checkpoint)
+
+```
+thread_id: "thread-abc123"            trace_id: "trace-xyz789"
+    │                                     │
+    ├── Step 1 (checkpoint)               ├── Call/Step 1 (agent_node)
+    ├── Step 2 (checkpoint)               ├── Call/Step 2 (tools_node)
+    └── Step 3 (latest)                   └── Call/Step 3 (evaluator_node)
+```
+
+- **LangGraph**: `thread_id` groups checkpoints, each with `metadata.step`
+- **Weave**: `trace_id` groups calls (steps), root has `parent_id: null`
+
+See `docs/api-contracts/json-examples/README.md#id-based-grouping` for details.

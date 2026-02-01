@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "_example-run-walkthrough",
+  "_source": "docs/domains/agent-loop.md",
+  "_description": "DOCUMENTATION ONLY - Not a stored object. Shows complete agent-loop flow.",
+  "_warning": "This file illustrates the run flow. Actual persistence uses ID-based grouping via thread_id (LangGraph) and trace_id (Weave) - see README.md#id-based-grouping.",
+
+  // ============================================================================
+  // ITERATION 1: Agent uses tool
+  // ============================================================================
+  "iteration_1": {
+    "_phase": "AGENT NODE",
+    "agent_output": {
+      "type": "ai",
+      "content": "",
+      "tool_calls": [
+        {
+          "name": "web_search",
+          "args": { "query": "AI trends 2026" },
+          "id": "call_001",
+          "type": "tool_call"
+        }
+      ]
+    },
+
+    "_phase_next": "TOOLS NODE (tool_calls present)",
+    "tools_output": {
+      "type": "tool",
+      "content": "1. Agentic AI workflows\n2. Multimodal reasoning\n3. On-device LLMs",
+      "name": "web_search",
+      "tool_call_id": "call_001"
+    },
+
+    "_note": "Tool results → back to AGENT NODE (not Evaluator)"
+  },
+
+  // ============================================================================
+  // ITERATION 2: Agent responds with content (no tools)
+  // ============================================================================
+  "iteration_2": {
+    "_phase": "AGENT NODE",
+    "agent_output": {
+      "type": "ai",
+      "content": "Based on my research, the top AI trends for 2026 are:\n\n1. **Agentic AI Workflows** - AI systems that can autonomously plan and execute multi-step tasks\n2. **Multimodal Reasoning** - Models that combine text, images, and audio understanding\n3. **On-device LLMs** - Smaller models running locally for privacy and speed",
+      "tool_calls": []
+    },
+
+    "_phase_next": "EVALUATOR NODE (no tool_calls)",
+    "evaluator_output": {
+      "iteration": 2,
+      "evaluation": "Response is comprehensive with 3 clear trends. Each trend has a brief explanation. Could benefit from specific examples or citations."
+    },
+
+    "_phase_next2": "RANKER NODE",
+    "ranker_output": {
+      "iteration": 2,
+      "ranking": "This response ranks highly for structure and clarity. The bullet format makes it scannable. Compared to iteration 1 (tool-only), this provides actual analysis."
+    },
+
+    "_phase_next3": "DECIDER NODE",
+    "decider_logic": {
+      "response_length": 312,
+      "has_tool_calls": false,
+      "iteration": 2,
+      "max_iterations": 5,
+      "decision": "COMPLETE",
+      "reason": "Response >= 10 chars and no tool calls"
+    }
+  },
+
+  // ============================================================================
+  // FINAL STATE (at END node)
+  // ============================================================================
+  "final_state": {
+    "_description": "AgentState at graph completion (agentloop-state.jsonc format)",
+
+    "task": "Analyze recent AI trends",
+
+    "messages": [
+      // Initial user request
+      { "type": "human", "content": "Analyze recent AI trends" },
+
+      // Iteration 1: Agent calls tool
+      {
+        "type": "ai",
+        "content": "",
+        "tool_calls": [
+          { "name": "web_search", "args": { "query": "AI trends 2026" }, "id": "call_001", "type": "tool_call" }
+        ]
+      },
+
+      // Iteration 1: Tool result
+      {
+        "type": "tool",
+        "content": "1. Agentic AI workflows\n2. Multimodal reasoning\n3. On-device LLMs",
+        "name": "web_search",
+        "tool_call_id": "call_001"
+      },
+
+      // Iteration 2: Agent final response
+      {
+        "type": "ai",
+        "content": "Based on my research, the top AI trends for 2026 are:\n\n1. **Agentic AI Workflows** - AI systems that can autonomously plan and execute multi-step tasks\n2. **Multimodal Reasoning** - Models that combine text, images, and audio understanding\n3. **On-device LLMs** - Smaller models running locally for privacy and speed"
+      }
+    ],
+
+    "response": "Based on my research, the top AI trends for 2026 are:\n\n1. **Agentic AI Workflows** - AI systems that can autonomously plan and execute multi-step tasks\n2. **Multimodal Reasoning** - Models that combine text, images, and audio understanding\n3. **On-device LLMs** - Smaller models running locally for privacy and speed",
+
+    "iteration": 2,
+    "max_iterations": 5,
+
+    "evaluations": [
+      {
+        "iteration": 2,
+        "evaluation": "Response is comprehensive with 3 clear trends. Each trend has a brief explanation. Could benefit from specific examples or citations."
+      }
+    ],
+
+    "rankings": [
+      {
+        "iteration": 2,
+        "ranking": "This response ranks highly for structure and clarity. The bullet format makes it scannable. Compared to iteration 1 (tool-only), this provides actual analysis."
+      }
+    ]
+  },
+
+  // ============================================================================
+  // PERSISTED ARTIFACTS
+  // ============================================================================
+  "persistence": {
+    "_description": "What gets saved after the run completes",
+
+    "langgraph_checkpoint": {
+      "_ref": "langgraph-checkpoint.jsonc",
+      "thread_id": "thread-user123-session456",
+      "checkpoint_id": "1ef663ba-28fe-6528-8002-5a559208592c",
+      "values": "← final_state above"
+    },
+
+    "weave_evaluation": {
+      "_ref": "weave-evaluation.jsonc",
+      "_note": "Optional: saved for quality tracking across runs"
+    }
+  },
+
+  // ============================================================================
+  // WEAVE TRACE HIERARCHY (reconstructed view)
+  // ============================================================================
+  // NOTE: Weave stores flat calls (LangGraph: steps) linked by trace_id + parent_id.
+  // This nested view is what you see in the Weave UI, reconstructed at query time.
+  // Terminology: Weave "call" = LangGraph "step" (see metadata.step in checkpoint)
+  "weave_trace_nested": {
+    "_warning": "DOCUMENTATION ONLY - Weave does not store nested objects. This shows the logical hierarchy.",
+    "_ref": "weave-call.jsonc for individual call (LangGraph: step) schema",
+    "_terminology": "Weave 'call' = LangGraph 'step'",
+
+    "trace_id": "trace-run-abc123",
+
+    // Root call/step (parent_id: null)
+    "root": {
+      "id": "call-001",
+      "op_name": "run_agent_loop",
+      "parent_id": null,
+      "step": 0,
+      "started_at": "2026-01-31T12:00:00.000Z",
+      "ended_at": "2026-01-31T12:00:10.000Z",
+
+      // Children linked via parent_id: "call-001"
+      "children": [
+        {
+          "id": "call-002",
+          "op_name": "agent_node",
+          "parent_id": "call-001",
+          "step": 1,
+          "inputs": { "iteration": 1 },
+          "output": { "tool_calls": [{"name": "web_search"}] },
+
+          // Nested child: tool execution
+          "children": [
+            {
+              "id": "call-003",
+              "op_name": "tools_node",
+              "parent_id": "call-002",
+              "step": 2,
+              "inputs": { "tool": "web_search" },
+              "output": { "result": "AI trends data..." }
+            }
+          ]
+        },
+        {
+          "id": "call-004",
+          "op_name": "agent_node",
+          "parent_id": "call-001",
+          "step": 3,
+          "inputs": { "iteration": 2 },
+          "output": { "content": "Based on my research..." },
+
+          // No tool children - goes to evaluation
+          "children": []
+        },
+        {
+          "id": "call-005",
+          "op_name": "evaluator_node",
+          "parent_id": "call-001",
+          "step": 4,
+          "inputs": { "response": "Based on my research..." },
+          "output": { "evaluation": "Response is comprehensive..." }
+        },
+        {
+          "id": "call-006",
+          "op_name": "ranker_node",
+          "parent_id": "call-001",
+          "step": 5,
+          "output": { "ranking": "High quality response..." }
+        },
+        {
+          "id": "call-007",
+          "op_name": "decider_node",
+          "parent_id": "call-001",
+          "step": 6,
+          "output": { "decision": "COMPLETE" }
+        }
+      ]
+    }
+  }
+}

@@ -28,6 +28,62 @@ A clean, minimal abstraction for building self-improving AI agents that:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Domain Architecture
+
+JSON schemas: `docs/api-contracts/json-examples/`
+
+**ID-Based Grouping**: LangGraph and Weave use IDs (not container objects) to group related records:
+- `thread_id` groups LangGraph checkpoints
+- `trace_id` groups Weave calls
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│                          AGENT-LOOP DOMAIN MAP                            │
+├───────────────────────────────────────────────────────────────────────────┤
+│  Grouping: thread_id (LangGraph) | trace_id (Weave)                       │
+│                                                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │  AGENT LOOP DOMAIN (docs/domains/agent-loop.md)                     │  │
+│  │  State: agentloop-state.jsonc | Messages: agentloop-messages.jsonc  │  │
+│  │  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────────┐  │  │
+│  │  │  Agent   │──▶│  Tools   │──▶│Evaluator │──▶│ Ranker ──▶Decider│  │  │
+│  │  │[AIMessage]   │[ToolMsg] │   │[Eval]    │   │ [Ranking]        │  │  │
+│  │  └──────────┘   └──────────┘   └────┬─────┘   └────────┬─────────┘  │  │
+│  │  Traces: weave-call.jsonc | Persist: langgraph-checkpoint.jsonc     │  │
+│  └─────────────────────────────────────┼──────────────────┼────────────┘  │
+│                                        │                  │               │
+│            ┌───────────────────────────┴──────────────────┘               │
+│            ▼                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │  FEEDBACK DOMAIN (docs/domains/feedback.md)                         │  │
+│  │  ┌───────────────────┐   ┌───────────────────┐   ┌───────────────┐  │  │
+│  │  │ Evaluation        │──▶│ RankingEntry      │──▶│ Decider Input │  │  │
+│  │  │ (agentloop-state  │   │ (agentloop-memory │   │ (next action) │  │  │
+│  │  │  .evaluations[])  │   │  .ranking_entry)  │   │               │  │  │
+│  │  └────────┬──────────┘   └───────────────────┘   └───────────────┘  │  │
+│  │  Persist: weave-evaluation.jsonc                                    │  │
+│  └───────────┼─────────────────────────────────────────────────────────┘  │
+│              │                                                            │
+│              ▼                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │  MEMORY DOMAIN (docs/domains/memory.md)                             │  │
+│  │  Grouping: thread_id | namespace[] | weave ref                      │  │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────┐  │  │
+│  │  │ Conversation    │  │ Pattern         │  │ Ranking+Preference  │  │  │
+│  │  │ (langgraph-     │  │ (agentloop-     │  │ (agentloop-memory   │  │  │
+│  │  │  checkpoint)    │  │  memory.pattern)│  │  .ranking_entry)    │  │  │
+│  │  └───────┬─────────┘  └───────┬─────────┘  └──────────┬──────────┘  │  │
+│  │          └────────────────────┼───────────────────────┘             │  │
+│  │                               ▼                                     │  │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────────────┐ │  │
+│  │  │agentloop-memory │  │ weave-object    │  │langgraph-memory-item │ │  │
+│  │  │.jsonc (primary) │  │ .jsonc          │  │.jsonc                │ │  │
+│  │  └─────────────────┘  └─────────────────┘  └──────────────────────┘ │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
 ## Getting Started
 
 ### 1. Clone & Setup

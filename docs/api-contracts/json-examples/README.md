@@ -36,6 +36,41 @@ This directory contains canonical JSON schema examples for all object types used
 | `agentloop-messages.jsonc` | Message structures (LangChain default) | `langchain_core.messages` |
 | `agentloop-memory.jsonc` | Memory structures | `domain/models/memory.py` |
 
+## Documentation-Only Files
+
+| File | Description |
+|------|-------------|
+| `_example-run-walkthrough.jsonc` | Illustrative walkthrough of a complete loop run (not a stored object) |
+
+## ID-Based Grouping
+
+Neither LangGraph nor Weave store an explicit "Thread" or "Trace" container object.
+Instead, both use **ID-based grouping** where related records share a common identifier:
+
+### Terminology Mapping
+
+| Weave | LangGraph | Description |
+|-------|-----------|-------------|
+| `call` | `step` | Single traced operation (see `metadata.step` in checkpoint) |
+| `trace_id` | `thread_id` | Groups related calls/steps |
+| `parent_id` | `parent_config` | Links to parent call/checkpoint |
+
+```
+LangGraph (thread_id)                 Weave (trace_id)
+────────────────────────              ────────────────────────
+thread_id: "thread-abc123"            trace_id: "trace-xyz789"
+    │                                     │
+    ├── Step 1 (checkpoint)               ├── Call 1 (parent_id: null) ← root
+    ├── Step 2 (checkpoint)               ├── Call 2 (parent_id: call_1)
+    └── Step 3 (latest)                   └── Call 3 (parent_id: call_1)
+```
+
+**LangGraph**: `thread_id` groups checkpoints. Each checkpoint contains a `step` number.
+The latest checkpoint represents current conversation state.
+
+**Weave**: `trace_id` groups calls (LangGraph: steps). The root call has `parent_id: null`.
+Child calls reference their parent via `parent_id` for hierarchical traces.
+
 ## Usage
 
 These files serve as:
