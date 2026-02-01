@@ -41,6 +41,9 @@ Analyze the game and suggest cheatsheet updates. Consider:
 3. What patterns did you notice in other players?
 4. What should be remembered for future games?
 
+IMPORTANT: Every game teaches something. You MUST suggest at least 1 update per game.
+Each lesson should be grounded in a specific game event - cite the exact moment that taught this lesson.
+
 Respond with JSON:
 {{
   "player_id": "{player_id}",
@@ -50,14 +53,15 @@ Respond with JSON:
       "action": "add|update|remove",
       "item": {{"category": "...", "content": "...", "helpfulness_score": 0.5}},
       "item_id": "existing_item_id_for_update_or_remove",
-      "reasoning": "why this change"
+      "reasoning": "why this change",
+      "source_event": "Quote or describe the specific game event that led to this lesson (e.g., '[DAY 2] Alice accused Bob and Bob turned out to be Mafia' or '[NIGHT] Doctor saved the wrong person while real target died')"
     }}
   ],
   "overall_assessment": "1 sentence on player's performance"
 }}
 
 Categories: "deception", "detection", "voting", "night_actions", "general"
-Keep items concise (1-2 sentences). Suggest 0-3 updates per game."""
+Keep items concise (1-2 sentences). Suggest 1-3 updates per game - learning requires change."""
 
 
 CURATOR_SYSTEM_PROMPT = """You are curating cheatsheet updates for player {player_name}.
@@ -74,8 +78,15 @@ For each proposed delta, decide:
 - "reject": Don't apply (not useful, redundant, or wrong)
 - "merge": Combine with existing item (specify merge_with_id)
 
+IMPORTANT: The cheatsheet MUST evolve after each game. Stagnant cheatsheets don't help learning.
+- Lean toward accepting proposed updates unless they are clearly wrong or highly redundant
+- If rejecting, provide a strong justification - "already covered" is only valid if truly duplicate
+- Each update includes a source_event showing what game moment taught this lesson - preserve this context
+
 Also:
-- Adjust helpfulness_score for existing items based on game performance (+/- 0.1)
+- Adjust helpfulness_score for existing items based on game performance (any value 0.0-1.0)
+- Items that were actively used and helped should increase significantly
+- Items that led to mistakes or weren't applicable should decrease significantly
 - Flag items for pruning if score drops below 0.2
 
 Respond with JSON:
@@ -86,11 +97,12 @@ Respond with JSON:
       "delta_index": 0,
       "decision": "accept|reject|merge",
       "reasoning": "why",
-      "merge_with_id": "item_id if merging"
+      "merge_with_id": "item_id if merging",
+      "source_event": "preserved from reflector - the game event that taught this lesson"
     }}
   ],
   "score_adjustments": [
-    {{"item_id": "...", "new_score": 0.6, "reasoning": "why"}}
+    {{"item_id": "...", "new_score": 0.6, "reasoning": "why - cite the game event that informed this adjustment"}}
   ],
   "prune_items": [
     {{"item_id": "...", "reasoning": "why"}}

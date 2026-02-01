@@ -188,6 +188,7 @@ class DeltaUpdate(BaseModel):
     item: Optional[CheatsheetItem] = None
     item_id: Optional[str] = None
     reasoning: str
+    source_event: str = ""  # The specific game event that led to this lesson
 
 
 class ReflectorOutput(BaseModel):
@@ -202,6 +203,7 @@ class CuratorDecision(BaseModel):
     decision: str  # "accept", "reject", "merge"
     reasoning: str
     merge_with_id: Optional[str] = None
+    source_event: str = ""  # Preserved from reflector - the game event that taught this lesson
 
 
 class CuratorOutput(BaseModel):
