@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Output valid JSON only. No markdown, no explanation, no code blocks.\n\nIf stop_hook_active is true: {\"ok\":true,\"reason\":\"cleanup complete\"}\n\nOtherwise check session code for BLOCK violations: empty catch, silent error fallbacks, null returns without Optional, >4 params, commented-out code, copy-paste >5 lines, magic literals, framework in domain, dead code, clever one-liners, type switch >3 cases.\n\nClean: {\"ok\":true,\"reason\":\"no violations\"}\nViolations found: {\"ok\":false,\"reason\":\"[list violations briefly]\"}",
+            "prompt": "Review code written this session for BLOCK violations: empty catch, silent error fallbacks, null returns without Optional, >4 params, commented-out code, copy-paste >5 lines, magic literals, framework in domain, dead code, clever one-liners, type switch >3 cases.\n\nIf stop_hook_active is true or no code was written: reply 'OK: no review needed'\n\nOtherwise:\n- Clean: 'OK: no violations'\n- Violations found: list them briefly",
             "timeout": 60
           }
         ]
