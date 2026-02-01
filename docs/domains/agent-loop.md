@@ -11,23 +11,69 @@ sources:
 
 See `AGENTS.md` ([AR1a-e], [LG1a-d], [WV1a-d]).
 
-## Purpose
+## Graph Flow
 
-The agent loop coordinates observe → decide → act → evaluate → rank → select → finalize
-using a LangGraph `StateGraph` with typed state and checkpointed threads.
-Each node is traced with `@weave.op()` for observability.
+```
+                         ┌─────────┐
+                         │  START  │
+                         └────┬────┘
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │    AGENT NODE     │ ←──────────────────┐
+                    │    [LLM call]     │                    │
+                    └────────┬──────────┘                    │
+                             │                               │
+                   ┌─────────┴─────────┐                     │
+                   │   Tool calls?     │                     │
+                   └─────────┬─────────┘                     │
+                      YES    │    NO                         │
+                  ┌──────────┴──────────┐                    │
+                  ▼                     ▼                    │
+         ┌──────────────┐     ┌───────────────────┐          │
+         │  TOOLS NODE  │     │  EVALUATOR NODE   │          │
+         │  [execute]   │     │  [LLM call]       │          │
+         └──────┬───────┘     └────────┬──────────┘          │
+                │                      │                     │
+                │                      ▼                     │
+                │             ┌───────────────────┐          │
+                │             │   RANKER NODE     │          │
+                │             │   [LLM call]      │          │
+                │             └────────┬──────────┘          │
+                │                      │                     │
+                │                      ▼                     │
+                │             ┌───────────────────┐          │
+                │             │   DECIDER NODE    │          │
+                │             │   [logic only]    │          │
+                │             └────────┬──────────┘          │
+                │                      │                     │
+                │           ┌──────────┴──────────┐          │
+                │           │  Complete response? │          │
+                │           │  or at max iter?    │          │
+                │           └──────────┬──────────┘          │
+                │                YES   │   NO                │
+                │              ┌───────┴───────┐             │
+                │              ▼               └─────────────┘
+                │         ┌─────────┐
+                └────────▶│   END   │
+                          └─────────┘
+```
 
-**Sources:**
-- https://docs.langchain.com/oss/python/langgraph/graph-api
-- https://langchain-ai.github.io/langgraph/concepts/persistence/
-- https://docs.wandb.ai/weave/guides/tracking/ops
+## LLM Calls Per Request
+
+| Scenario | Agent | Evaluator | Ranker | Decider | Total |
+|----------|-------|-----------|--------|---------|-------|
+| Simple (early exit) | 1 | 1 | 1 | 0 | **3** |
+| With tools (1 iter) | 1+ | 1 | 1 | 0 | **3+** |
+| Max iterations (5) | 5 | 5 | 5 | 1 | **16** |
 
 ## Domain Concepts
 
-- **LoopState**: Typed state passed between nodes (task, messages, observations, decision, response).
-- **Decision**: Either tool call, evaluation request, or final response.
-- **Observation**: Result of tool execution or evaluator output.
-- **Run**: One full loop execution with a `run_id` and optional `thread_id`.
+- **AgentState**: Typed Pydantic state (task, messages, evaluations, rankings, response).
+- **Early Termination**: Decider exits if agent provides complete response (≥10 chars, no tools).
+- **Observation**: Result of tool execution, stored as ToolMessage.
+- **Evaluation**: Assessor output analyzing progress, quality, efficiency.
+- **Ranking**: Comparative analysis across iterations.
 
 ## Thread Continuity
 
