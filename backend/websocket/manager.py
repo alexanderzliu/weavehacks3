@@ -293,8 +293,8 @@ class ConnectionManager:
                 try:
                     await self._send_message(sub.websocket, message)
                     return True
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to send to player %s: %s", player_id, e)
         return False
 
 
@@ -303,7 +303,7 @@ ws_manager = ConnectionManager()
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket):  # noqa: C901, PLR0912
     """WebSocket endpoint for live game streaming."""
     await ws_manager.connect(websocket)
     subscription: Subscription | None = None
