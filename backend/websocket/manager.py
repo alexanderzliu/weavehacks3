@@ -247,10 +247,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
-            data = await websocket.receive_json()
+            raw_message = await websocket.receive_json()
 
-            msg_type = data.get("type")
-            payload = data.get("payload", {})
+            msg_type = raw_message.get("type")
+            payload = raw_message.get("payload", {})
 
             if msg_type == "subscribe":
                 series_id = payload.get("series_id")

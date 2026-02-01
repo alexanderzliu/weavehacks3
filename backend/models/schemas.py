@@ -1,9 +1,14 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, TypeAlias
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
+
+# Event payloads are polymorphic by EventType. A full discriminated union would
+# require significant refactoring. This alias documents the intent while we
+# use runtime validation via EventType-specific payload schemas where needed.
+EventPayload: TypeAlias = dict[str, Any]
 
 # ============ Enums ============
 
@@ -168,7 +173,7 @@ class GameEvent(BaseModel):
     visibility: Visibility
     actor_id: str | None = None
     target_id: str | None = None
-    payload: dict[str, Any] = {}
+    payload: EventPayload = Field(default_factory=dict)
 
 
 # ============ Actor Output Models ============
@@ -215,11 +220,22 @@ class CuratorDecision(BaseModel):
     source_event: str = ""  # Preserved from reflector - the game event that taught this lesson
 
 
+class ScoreAdjustment(BaseModel):
+    item_id: str
+    new_score: float = Field(ge=0.0, le=1.0)
+    reasoning: str
+
+
+class PruneItem(BaseModel):
+    item_id: str
+    reasoning: str
+
+
 class CuratorOutput(BaseModel):
     player_id: str
     decisions: list[CuratorDecision]
-    score_adjustments: list[dict[str, Any]] = []
-    prune_items: list[dict[str, Any]] = []
+    score_adjustments: list[ScoreAdjustment] = []
+    prune_items: list[PruneItem] = []
     final_cheatsheet: Cheatsheet
 
 

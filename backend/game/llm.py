@@ -253,8 +253,8 @@ The response must conform to this schema:
         text = text.strip()
 
         try:
-            data = json.loads(text)
-            return response_model.model_validate(data)
+            parsed_json = json.loads(text)
+            return response_model.model_validate(parsed_json)
         except json.JSONDecodeError as e:
             raise LLMParseError(f"Invalid JSON: {e}") from e
         except Exception as e:
