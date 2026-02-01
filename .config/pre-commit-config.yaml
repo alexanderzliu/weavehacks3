@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: validate
+        name: Full Validation Gate (make validate)
+        entry: make validate
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
