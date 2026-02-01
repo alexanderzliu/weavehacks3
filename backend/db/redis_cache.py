@@ -1,71 +1,121 @@
-"""Redis cache helpers for cheatsheets."""
+"""Redis cache helpers for cheatsheets.
+
+Provides optional caching layer that operates seamlessly whether Redis
+is available or not. All operations are no-ops when Redis is unavailable.
+"""
 
 import json
 import logging
 
 import redis.asyncio as redis
+from redis.exceptions import RedisError
 
 from config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_redis_client: redis.Redis | None = None
 
+class _RedisCache:
+    """Internal Redis cache manager with connection state tracking."""
 
-async def get_redis() -> redis.Redis | None:
-    """Get or create Redis client. Returns None if unavailable."""
-    global _redis_client  # noqa: PLW0603
-    if _redis_client is None:
-        try:
-            settings = get_settings()
-            _redis_client = await redis.from_url(settings.REDIS_URL, decode_responses=True)
-            await _redis_client.ping()
-        except Exception:
-            _redis_client = None
+    def __init__(self):
+        self._client: redis.Redis | None = None
+        self._unavailable: bool = False
+
+    async def get_client(self) -> redis.Redis | None:
+        """Get Redis client, returning None if unavailable."""
+        if self._unavailable:
             return None
-    return _redis_client
+
+        if self._client is None:
+            try:
+                settings = get_settings()
+                self._client = await redis.from_url(settings.REDIS_URL, decode_responses=True)
+                await self._client.ping()
+                logger.info("Redis cache connected")
+            except Exception:
+                self._unavailable = True
+                self._client = None
+                logger.info("Redis unavailable - caching disabled")
+                return None
+
+        return self._client
+
+    async def _execute(self, func) -> None:
+        """Execute Redis operation, handling disconnects gracefully."""
+        client = await self.get_client()
+        if not client:
+            return None
+
+        try:
+            return await func(client)
+        except RedisError:
+            self._unavailable = True
+            self._client = None
+            logger.info("Redis connection lost - caching disabled")
+            return None
+
+    async def get(self, player_id: str) -> dict | None:
+        """Get cheatsheet from cache."""
+
+        async def _get(client: redis.Redis):
+            value = await client.get(f"cs:{player_id}")
+            return json.loads(value) if value else None
+
+        return await self._execute(_get)
+
+    async def set(self, player_id: str, data: dict, ttl: int = 3600) -> None:
+        """Set cheatsheet in cache with TTL."""
+
+        async def _set(client: redis.Redis):
+            await client.set(f"cs:{player_id}", json.dumps(data), ex=ttl)
+
+        await self._execute(_set)
+
+    async def invalidate(self, player_id: str) -> None:
+        """Invalidate cheatsheet cache for player."""
+
+        async def _delete(client: redis.Redis):
+            await client.delete(f"cs:{player_id}")
+
+        await self._execute(_delete)
+
+    async def close(self) -> None:
+        """Close Redis connection."""
+        if self._client:
+            try:
+                await self._client.aclose()
+            except Exception:
+                pass  # Closing - errors don't matter
+            finally:
+                self._client = None
+        self._unavailable = False
+
+
+_cache = _RedisCache()
+
+
+# Public API - maintains backward compatibility
+async def get_redis() -> redis.Redis | None:
+    """Get Redis client. Returns None if unavailable."""
+    return await _cache.get_client()
 
 
 async def cache_get(player_id: str) -> dict | None:
-    """Get cheatsheet from cache. Returns None on miss or error."""
-    try:
-        client = await get_redis()
-        if not client:
-            return None
-        value = await client.get(f"cs:{player_id}")
-        return json.loads(value) if value else None
-    except Exception as e:
-        logger.debug("Redis cache_get failed for %s: %s", player_id, e)
-        return None
+    """Get cheatsheet from cache. Returns None on miss or unavailable."""
+    return await _cache.get(player_id)
 
 
 async def cache_set(player_id: str, data: dict, ttl: int = 3600) -> None:
-    """Set cheatsheet in cache with TTL."""
-    try:
-        client = await get_redis()
-        if client:
-            await client.set(f"cs:{player_id}", json.dumps(data), ex=ttl)
-    except Exception as e:
-        logger.debug("Redis cache_set failed for %s: %s", player_id, e)
+    """Set cheatsheet in cache with TTL. No-op if unavailable."""
+    await _cache.set(player_id, data, ttl)
 
 
 async def cache_invalidate(player_id: str) -> None:
-    """Invalidate cheatsheet cache for player."""
-    try:
-        client = await get_redis()
-        if client:
-            await client.delete(f"cs:{player_id}")
-    except Exception as e:
-        logger.debug("Redis cache_invalidate failed for %s: %s", player_id, e)
+    """Invalidate cheatsheet cache for player. No-op if unavailable."""
+    await _cache.invalidate(player_id)
 
 
 async def close_redis() -> None:
     """Close Redis connection on app shutdown."""
-    global _redis_client  # noqa: PLW0603
-    if _redis_client:
-        try:
-            await _redis_client.aclose()
-        except Exception as e:
-            logger.debug("Redis close failed: %s", e)
-        finally:
-            _redis_client = None
+    await _cache.close()
