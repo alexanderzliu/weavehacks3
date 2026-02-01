@@ -26,6 +26,7 @@ dependencies = [
     # Utilities
     "python-dotenv>=1.0.0",
     "httpx>=0.26.0",
+    "greenlet>=3.3.1",
 ]
 
 [build-system]
@@ -98,10 +99,16 @@ filterwarnings = [
     "ignore:.*The 'warn' method is deprecated.*:DeprecationWarning",
 ]
 
+[tool.ty.environment]
+python-version = "3.11"
+root = "."
+
 [dependency-groups]
 dev = [
+    "prek>=0.3.1",
     "pytest-asyncio>=1.0.0",
     "pytest-mock>=3.14.0",
     "pytest>=8.0.0",
     "ruff>=0.4.0",
+    "ty>=0.0.14",
 ]
