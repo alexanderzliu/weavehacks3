@@ -110,9 +110,17 @@ make fix
 
 ### Python Library
 ```python
+import asyncio
+
 from agent_loop import AgentLoop
-agent = AgentLoop()
-result = await agent.arun("Analyze AI trends")
+
+async def main() -> None:
+    agent = AgentLoop()
+    result = await agent.arun("Analyze AI trends")
+    print(result)
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 ### REST API
