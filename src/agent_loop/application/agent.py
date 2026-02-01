@@ -14,12 +14,13 @@ Sources:
 
 import asyncio
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import weave
 
 if TYPE_CHECKING:
     from weave.trace.weave_client import Call
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
@@ -34,7 +35,7 @@ from agent_loop.graph.state import DEFAULT_MAX_ITERATIONS, AgentState
 _TASK_DISPLAY_LIMIT = 50
 
 
-def _format_agent_loop_display_name(call: weave.Call) -> str:
+def _format_agent_loop_display_name(call: "Call") -> str:
     """Format display name for agent loop traces.
 
     Extracts task from call inputs and truncates for readability.

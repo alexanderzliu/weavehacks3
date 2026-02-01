@@ -66,16 +66,25 @@ def execute_tool(tool_name: str, args: dict) -> ToolResult:
 For dynamic display names based on inputs, use `call_display_name` with a callable:
 
 ```python
-# call_display_name receives a Call object with .inputs, .func_name, .attributes, etc.
-# See: https://docs.wandb.ai/weave/guides/tracking/tracing#set-call-display-name-at-execution
-@weave.op(call_display_name=lambda call: f"Agent Loop: {call.inputs['task'][:50]}")
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from weave.trace.weave_client import Call
+
+def _format_display_name(call: "Call") -> str:
+    """Format display name from call inputs."""
+    task = call.inputs.get("task", "unknown")
+    return f"Agent Loop: {task[:50]}"
+
+@weave.op(call_display_name=_format_display_name)
 async def arun(self, task: str) -> AgentLoopResult:
     ...
 ```
 
 **Important:**
-- `call_display_name` must be a callable (function/lambda), not a string
-- The callable receives a `Call` object, access inputs via `call.inputs`
+- `call_display_name` must be a callable, not a string
+- Prefer named functions over lambdas for clarity and better stack traces
+- The callable receives a `Call` object; access inputs via `call.inputs`
 - Access other metadata via `call.func_name`, `call.attributes`, etc.
 
 **Source:** https://docs.wandb.ai/weave/guides/tracking/ops
