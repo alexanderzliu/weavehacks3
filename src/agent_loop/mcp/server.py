@@ -159,9 +159,7 @@ async def _handle_tool_call(name: str, arguments: dict[str, Any]) -> list[TextCo
     raise InvalidInputError(f"Unknown tool: {name}")
 
 
-async def _run_agent_tool(
-    agent: AgentLoop, arguments: dict[str, Any]
-) -> list[TextContent]:
+async def _run_agent_tool(agent: AgentLoop, arguments: dict[str, Any]) -> list[TextContent]:
     """Execute the run_agent tool."""
     task = arguments.get("task", "")
     if not task:
