@@ -91,7 +91,7 @@ class AgentLoop:
         self._compiled = self._graph.compile()
         return self
 
-    @weave.op(call_display_name=lambda inputs: f"Agent Loop: {inputs['task'][:50]}")
+    @weave.op(call_display_name=lambda call: f"Agent Loop: {call.inputs['task'][:50]}")
     async def arun(
         self,
         task: str,
