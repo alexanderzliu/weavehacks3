@@ -34,8 +34,10 @@ else:
 from contextlib import asynccontextmanager
 
 import weave
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from api.routes import router as api_router
 from db.database import init_db
@@ -89,6 +91,64 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api")
 app.include_router(ws_router)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Log validation errors with context before returning 422."""
+    errors = exc.errors()
+    detail_message = _format_validation_errors(errors)
+    logger.warning(
+        "Request validation failed: %s %s",
+        request.method,
+        request.url.path,
+        extra={
+            "errors": errors,
+            "body": exc.body if hasattr(exc, "body") else None,
+        },
+    )
+    # Log each error in a readable format
+    for err in errors:
+        field = " -> ".join(str(loc) for loc in err.get("loc", []))
+        msg = err.get("msg", "Unknown error")
+        logger.warning("  Validation error in '%s': %s", field, msg)
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": detail_message, "errors": errors},
+    )
+
+
+def _format_validation_errors(errors: list[dict]) -> str:
+    if not errors:
+        return "Request validation failed"
+    parts = []
+    for err in errors:
+        field = " -> ".join(str(loc) for loc in err.get("loc", []))
+        msg = err.get("msg", "Invalid value")
+        if field:
+            parts.append(f"{field}: {msg}")
+        else:
+            parts.append(msg)
+    return "; ".join(parts)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    logger.warning(
+        "HTTP %s %s -> %s: %s",
+        request.method,
+        request.url.path,
+        exc.status_code,
+        exc.detail,
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=exc.headers,
+    )
 
 
 @app.get("/health")

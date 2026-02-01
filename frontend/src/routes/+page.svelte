@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fetchSeries, createSeries, startSeries } from '$lib/api';
+	import { fetchSeries, createSeries, startSeries, extractErrorDetails } from '$lib/api';
 	import type { SeriesResponse } from '$lib/types';
 
 	let seriesList = $state<SeriesResponse[]>([]);
@@ -12,11 +12,11 @@
 	let formName = $state('AI Mafia Tournament');
 	let formTotalGames = $state(5);
 	let formPlayers = $state([
-		{ name: 'Alice', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Bob', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Charlie', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Diana', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Eve', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' }
+		{ name: 'Alice', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' },
+		{ name: 'Bob', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' },
+		{ name: 'Charlie', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' },
+		{ name: 'Diana', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' },
+		{ name: 'Eve', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' }
 	]);
 
 	onMount(async () => {
@@ -39,7 +39,7 @@
 
 	async function handleCreateSeries() {
 		try {
-			const res = await createSeries({
+			const result = await createSeries({
 				name: formName,
 				total_games: formTotalGames,
 				players: formPlayers.map((p) => ({
@@ -49,7 +49,10 @@
 					fixed_role: p.fixed_role || undefined
 				}))
 			});
-			if (!res.ok) throw new Error('Failed to create series');
+			if (!result.ok) {
+				error = result.error || 'Failed to create series';
+				return;
+			}
 			showCreateForm = false;
 			await loadSeries();
 		} catch (e) {
@@ -60,7 +63,10 @@
 	async function handleStartSeries(seriesId: string) {
 		try {
 			const res = await startSeries(seriesId);
-			if (!res.ok) throw new Error('Failed to start series');
+			if (!res.ok) {
+				const details = await extractErrorDetails(res);
+				throw new Error(details);
+			}
 			await loadSeries();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to start series';
@@ -73,7 +79,7 @@
 				...formPlayers,
 				{
 					name: `Player ${formPlayers.length + 1}`,
-					model_provider: 'openai',
+					model_provider: 'openai_compatible',
 					model_name: 'gpt-4o-mini',
 					fixed_role: ''
 				}
@@ -102,15 +108,17 @@
 
 	function handleProviderChange(index: number, newProvider: string) {
 		formPlayers[index].model_provider = newProvider;
-		// Set default model when switching to wandb
+		// Set default model when switching providers
 		if (newProvider === 'wandb') {
 			formPlayers[index].model_name = 'qwen3-235b';
-		} else if (newProvider === 'openai') {
+		} else if (newProvider === 'openai' || newProvider === 'openai_compatible') {
 			formPlayers[index].model_name = 'gpt-4o-mini';
 		} else if (newProvider === 'anthropic') {
 			formPlayers[index].model_name = 'claude-sonnet-4-20250514';
 		} else if (newProvider === 'google') {
 			formPlayers[index].model_name = 'gemini-2.0-flash';
+		} else if (newProvider === 'openrouter') {
+			formPlayers[index].model_name = 'anthropic/claude-3.5-sonnet';
 		}
 	}
 </script>
@@ -185,6 +193,7 @@
 											<option value="openai">OpenAI</option>
 											<option value="google">Google</option>
 											<option value="openai_compatible">OpenAI Compatible</option>
+											<option value="openrouter">OpenRouter</option>
 											<option value="wandb">W&amp;B Inference</option>
 										</select>
 										{#if player.model_provider === 'wandb'}
