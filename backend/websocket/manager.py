@@ -8,6 +8,8 @@ from uuid import uuid4
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
+from db.database import get_db_session
+from db import crud
 from models.schemas import GameEvent, Visibility
 
 
@@ -185,6 +187,41 @@ class ConnectionManager:
         """Send a message to a WebSocket."""
         await websocket.send_json(message.model_dump())
 
+    async def send_initial_snapshot(self, websocket: WebSocket, series_id: str) -> None:
+        """Send the current game state snapshot to a newly subscribed client."""
+        try:
+            async with get_db_session() as db:
+                game = await crud.get_active_game_for_series(db, series_id)
+                if not game:
+                    return
+
+                # Build player list with roles
+                players = [
+                    {
+                        "name": gp.player.name,
+                        "role": gp.role,
+                        "is_alive": gp.is_alive,
+                    }
+                    for gp in game.game_players
+                ]
+
+                alive_player_names = [p["name"] for p in players if p["is_alive"]]
+
+                message = WSMessage(
+                    type="snapshot",
+                    payload={
+                        "game_id": game.id,
+                        "alive_player_ids": alive_player_names,
+                        "phase": game.status,
+                        "day_number": game.day_number,
+                        "players": players,
+                    },
+                )
+                await self._send_message(websocket, message)
+        except Exception as e:
+            # Don't fail subscription if initial snapshot fails
+            print(f"Failed to send initial snapshot: {e}")
+
 
 # Global connection manager instance
 ws_manager = ConnectionManager()
@@ -225,6 +262,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": "subscribed",
                     "payload": {"series_id": series_id, "subscription_id": subscription.id},
                 })
+
+                # Send initial snapshot of current game state
+                await ws_manager.send_initial_snapshot(websocket, series_id)
 
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong", "payload": {}})

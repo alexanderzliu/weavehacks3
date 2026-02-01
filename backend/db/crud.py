@@ -199,6 +199,18 @@ async def get_games_for_series(db: AsyncSession, series_id: str) -> list[Game]:
     return list(result.scalars().all())
 
 
+async def get_active_game_for_series(db: AsyncSession, series_id: str) -> Optional[Game]:
+    """Get the currently active (non-completed) game for a series."""
+    result = await db.execute(
+        select(Game)
+        .options(selectinload(Game.game_players).selectinload(GamePlayer.player))
+        .where(Game.series_id == series_id)
+        .where(Game.status != "completed")
+        .order_by(Game.game_number.desc())
+    )
+    return result.scalar_one_or_none()
+
+
 # ============ GamePlayer CRUD ============
 
 async def create_game_player(
