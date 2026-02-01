@@ -124,6 +124,8 @@ async def stop_series(
     db: AsyncSession = Depends(get_db),
 ):
     """Request to stop a series after the current phase/game."""
+    from websocket.manager import ws_manager
+
     series = await crud.get_series(db, series_id)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
@@ -136,6 +138,14 @@ async def stop_series(
 
     await crud.update_series_status(db, series_id, SeriesStatus.STOP_REQUESTED)
     await db.commit()
+
+    # Broadcast stop_requested immediately so frontend can show "Stopping..." state
+    await ws_manager.broadcast_series_status(
+        series_id,
+        SeriesStatus.STOP_REQUESTED.value,
+        series.current_game_number,
+        series.total_games,
+    )
 
     return {"message": "Stop requested", "series_id": series_id}
 

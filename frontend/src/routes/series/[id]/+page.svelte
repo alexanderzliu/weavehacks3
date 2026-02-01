@@ -47,6 +47,9 @@
 
 	// Replay state
 	let isReplaying = $state(false);
+
+	// Derived status from WebSocket (real-time) or series data (initial load)
+	let currentSeriesStatus = $derived($seriesProgress?.status ?? series?.status ?? 'pending');
 	let replayIndex = $state(0);
 	let replayTimer = $state<ReturnType<typeof setTimeout> | null>(null);
 	let waitingForSpeech = $state(false); // True when waiting for speech to finish streaming
@@ -424,6 +427,8 @@
 				return 'completed';
 			case 'stop_requested':
 				return 'warning';
+			case 'stopped':
+				return 'stopped';
 			default:
 				return '';
 		}
@@ -645,15 +650,17 @@
 				</a>
 				<div class="title-group">
 					<h1>{series.name}</h1>
-					<span class="badge {getStatusColor(series.status)}">{series.status.replace('_', ' ')}</span>
+					<span class="badge {getStatusColor(currentSeriesStatus)}">{currentSeriesStatus.replace('_', ' ')}</span>
 				</div>
 			</div>
 
 			<div class="actions">
-				{#if series.status === 'pending'}
+				{#if currentSeriesStatus === 'pending'}
 					<button onclick={handleStart}>Start Series</button>
-				{:else if series.status === 'in_progress'}
+				{:else if currentSeriesStatus === 'in_progress'}
 					<button class="secondary" onclick={handleStop}>Stop After Current Game</button>
+				{:else if currentSeriesStatus === 'stop_requested'}
+					<button class="secondary" disabled>Stopping...</button>
 				{/if}
 			</div>
 		</div>

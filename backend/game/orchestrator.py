@@ -28,6 +28,33 @@ def _series_display_name(call: Call) -> str:
     return f"{series_name}-{timestamp}"
 
 
+async def _mark_series_stopped(
+    series_id: str,
+    game_number: int,
+    total_games: int,
+    broadcaster: EventBroadcaster,
+) -> None:
+    """Mark series as stopped and broadcast the status update."""
+    async with get_db_session() as db:
+        await crud.update_series_status(db, series_id, SeriesStatus.STOPPED)
+    await broadcaster.broadcast_series_status(
+        series_id, SeriesStatus.STOPPED.value, game_number, total_games
+    )
+
+
+def _build_fixed_roles(series_config: dict, players: list) -> dict[str, str]:
+    """Build fixed_roles map from series config."""
+    config_players = series_config.get("players", [])
+    player_name_to_id = {p.name: p.id for p in players}
+    fixed_roles = {}
+    for pc in config_players:
+        if pc.get("fixed_role"):
+            pid = player_name_to_id.get(pc["name"])
+            if pid:
+                fixed_roles[pid] = pc["fixed_role"]
+    return fixed_roles
+
+
 @weave.op(call_display_name=_series_display_name)
 async def run_series(
     series_id: str,
@@ -63,10 +90,7 @@ async def run_series(
             async with get_db_session() as db:
                 series = await crud.get_series(db, series_id)
                 if series.status == SeriesStatus.STOP_REQUESTED.value:
-                    await crud.update_series_status(db, series_id, SeriesStatus.STOPPED)
-                    await bc.broadcast_series_status(
-                        series_id, SeriesStatus.STOPPED.value, game_number - 1, total_games
-                    )
+                    await _mark_series_stopped(series_id, game_number - 1, total_games, bc)
                     return
 
             # Update current game number
@@ -93,17 +117,7 @@ async def run_series(
 
             # Assign roles
             player_ids = [p.id for p in players]
-
-            # Build fixed_roles map from series config
-            config_players = series.config.get("players", [])
-            player_name_to_id = {p.name: p.id for p in players}
-            fixed_roles = {}
-            for pc in config_players:
-                if pc.get("fixed_role"):
-                    pid = player_name_to_id.get(pc["name"])
-                    if pid:
-                        fixed_roles[pid] = pc["fixed_role"]
-
+            fixed_roles = _build_fixed_roles(series.config, players)
             await assign_roles(game_id, player_ids, fixed_roles, game_seed)
 
             # Run game
@@ -112,11 +126,7 @@ async def run_series(
 
             # If game was stopped (no winner), mark series as stopped
             if winner is None:
-                async with get_db_session() as db:
-                    await crud.update_series_status(db, series_id, SeriesStatus.STOPPED)
-                await bc.broadcast_series_status(
-                    series_id, SeriesStatus.STOPPED.value, game_number, total_games
-                )
+                await _mark_series_stopped(series_id, game_number, total_games, bc)
                 return
 
             # Check for stop request before reflection
@@ -129,11 +139,7 @@ async def run_series(
 
             if stop_after_reflection:
                 # Series was stopped between game end and reflection
-                async with get_db_session() as db:
-                    await crud.update_series_status(db, series_id, SeriesStatus.STOPPED)
-                await bc.broadcast_series_status(
-                    series_id, SeriesStatus.STOPPED.value, game_number, total_games
-                )
+                await _mark_series_stopped(series_id, game_number, total_games, bc)
                 return
 
         # Mark series complete (all games finished normally)
