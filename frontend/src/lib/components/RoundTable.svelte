@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import PlayerSeat from './PlayerSeat.svelte';
   import SpeechBubble from './SpeechBubble.svelte';
   import VoteArrow from './VoteArrow.svelte';
@@ -36,11 +37,40 @@
     onPlayerHover
   }: Props = $props();
 
-  // Calculate circular positions for players
-  const tableSize = 580;
-  const radius = 240;
-  const centerX = 290;
-  const centerY = 290;
+  // Responsive table sizing
+  let containerEl: HTMLDivElement;
+  let tableSize = $state(580);
+
+  // Padding for player cards (so they don't overflow the container)
+  // Increased to account for name tags, role labels, and R.I.P markers
+  const playerCardPadding = 80; // Space for cards that extend beyond their center point
+
+  onMount(() => {
+    const updateSize = () => {
+      if (containerEl) {
+        // Get available space, accounting for padding needed for player cards
+        const rect = containerEl.getBoundingClientRect();
+        const availableSize = Math.min(rect.width, rect.height) - (playerCardPadding * 2);
+        // Clamp between reasonable min/max (increased max to compensate for tighter radius)
+        tableSize = Math.max(400, Math.min(850, availableSize));
+      }
+    };
+
+    updateSize();
+    const resizeObserver = new ResizeObserver(updateSize);
+    resizeObserver.observe(containerEl);
+
+    return () => resizeObserver.disconnect();
+  });
+
+  // Dynamic calculations based on table size
+  // Reduced radius to keep player cards (including labels below) inside the container
+  let radius = $derived(tableSize * 0.36); // ~36% of table size for player radius
+  let centerX = $derived(tableSize / 2);
+  let centerY = $derived(tableSize / 2);
+
+  // Scale factor for player card sizing (1 = base size at 580px)
+  let scaleFactor = $derived(tableSize / 580);
 
   let positions = $derived.by(() => {
     const numPlayers = players.length;
@@ -61,11 +91,14 @@
   }
 </script>
 
-<div class="table-section">
+<div class="table-section" bind:this={containerEl}>
   <!-- Overhead lamp glow effect -->
   <div class="lamp-glow"></div>
 
-  <div class="round-table-container">
+  <div
+    class="round-table-container"
+    style="width: {tableSize}px; height: {tableSize}px; --table-size: {tableSize}px; --scale: {scaleFactor};"
+  >
     <!-- Wooden outer ring (::before pseudo-element in CSS) -->
     <!-- Green felt center (::after pseudo-element in CSS) -->
 
@@ -82,6 +115,7 @@
         cheatsheet={player.playerId ? cheatsheets.get(player.playerId) : null}
         cheatsheetLoading={loadingCheatsheet === player.playerId}
         onHover={onPlayerHover}
+        {scaleFactor}
       />
     {/each}
 
@@ -144,6 +178,8 @@
     position: relative;
     box-shadow: var(--shadow-noir);
     overflow: visible;
+    /* Add padding to prevent player cards from overflowing */
+    padding: 80px;
   }
 
   /* Overhead Lamp Glow */
@@ -152,30 +188,30 @@
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 400px;
+    width: 60%;
     height: 250px;
     background: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.06) 0%, transparent 70%);
     pointer-events: none;
     z-index: 1;
   }
 
-  /* Round Table Container */
+  /* Round Table Container - Now fluid */
   .round-table-container {
     position: relative;
-    width: 580px;
-    height: 580px;
     z-index: 2;
+    /* Width/height set via inline style */
   }
 
-  /* Outer Wooden Ring */
+  /* Outer Wooden Ring - Scales with table */
   .round-table-container::before {
     content: '';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 420px;
-    height: 420px;
+    /* ~72% of table size */
+    width: calc(var(--table-size, 580px) * 0.72);
+    height: calc(var(--table-size, 580px) * 0.72);
     background:
       radial-gradient(ellipse at 30% 30%, var(--wood-light) 0%, transparent 50%),
       radial-gradient(ellipse at 70% 70%, var(--wood-dark) 0%, transparent 50%),
@@ -190,15 +226,16 @@
     z-index: 0;
   }
 
-  /* Green Felt Center */
+  /* Green Felt Center - Scales with table */
   .round-table-container::after {
     content: '';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 340px;
-    height: 340px;
+    /* ~59% of table size */
+    width: calc(var(--table-size, 580px) * 0.59);
+    height: calc(var(--table-size, 580px) * 0.59);
     background: radial-gradient(ellipse at center, var(--felt-green) 0%, var(--felt-green-dark) 100%);
     border-radius: 50%;
     border: 3px solid var(--noir-gold-dim);
@@ -220,59 +257,11 @@
     overflow: visible;
   }
 
-  /* Responsive adjustments */
-  @media (max-width: 1200px) {
-    .round-table-container {
-      width: 520px;
-      height: 520px;
-    }
-
-    .round-table-container::before {
-      width: 380px;
-      height: 380px;
-    }
-
-    .round-table-container::after {
-      width: 300px;
-      height: 300px;
-    }
-  }
-
-  @media (max-width: 900px) {
-    .round-table-container {
-      width: 450px;
-      height: 450px;
-    }
-
-    .round-table-container::before {
-      width: 320px;
-      height: 320px;
-    }
-
-    .round-table-container::after {
-      width: 250px;
-      height: 250px;
-    }
-  }
-
+  /* Responsive adjustments - now handled dynamically via JS */
   @media (max-width: 600px) {
     .table-section {
       min-height: 400px;
-    }
-
-    .round-table-container {
-      width: 350px;
-      height: 350px;
-    }
-
-    .round-table-container::before {
-      width: 250px;
-      height: 250px;
-    }
-
-    .round-table-container::after {
-      width: 190px;
-      height: 190px;
+      padding: 40px;
     }
   }
 </style>

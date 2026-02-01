@@ -13,9 +13,10 @@
     cheatsheet?: Cheatsheet | null;
     cheatsheetLoading?: boolean;
     onHover?: (playerId: string | null) => void;
+    scaleFactor?: number;
   }
 
-  let { name, playerId, role, isAlive, isSpeaking, position, tableCenter, cheatsheet = null, cheatsheetLoading = false, onHover }: Props = $props();
+  let { name, playerId, role, isAlive, isSpeaking, position, tableCenter, cheatsheet = null, cheatsheetLoading = false, onHover, scaleFactor = 1 }: Props = $props();
 
   // Determine tooltip position: show below for top-half players (to avoid header), above for bottom-half
   let tooltipPosition = $derived.by((): 'above' | 'below' => {
@@ -65,7 +66,7 @@
   class:dead={!isAlive}
   class:speaking={isSpeaking}
   class:hovered={isHovered}
-  style="left: {position.x}px; top: {position.y}px;"
+  style="left: {position.x}px; top: {position.y}px; --scale: {scaleFactor};"
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
   role="button"
@@ -126,12 +127,16 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.3rem;
+    gap: calc(0.35rem * var(--scale, 1));
     transform: translate(-50%, -50%);
     transition: all 0.4s ease;
     animation: seatAppear 0.6s ease-out backwards;
     cursor: pointer;
     outline: none;
+    /* Use scale factor for proportional sizing */
+    --base-scale: var(--scale, 1);
+    /* Ensure player seats render above the table surface (wooden ring & felt) */
+    z-index: 10;
   }
 
   .player-seat.hovered {
@@ -162,15 +167,15 @@
     position: relative;
   }
 
-  /* Avatar Circle */
+  /* Avatar Circle - Larger base size, scales with table */
   .player-avatar {
-    width: 68px;
-    height: 68px;
+    width: calc(80px * var(--base-scale));
+    height: calc(80px * var(--base-scale));
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.75rem;
+    font-size: calc(2rem * var(--base-scale));
     border: 3px solid var(--noir-gold-dim);
     transition: all 0.4s ease;
     cursor: pointer;
@@ -185,10 +190,10 @@
   .player-avatar::before {
     content: '';
     position: absolute;
-    top: -5px;
-    left: -5px;
-    right: -5px;
-    bottom: -5px;
+    top: calc(-5px * var(--base-scale));
+    left: calc(-5px * var(--base-scale));
+    right: calc(-5px * var(--base-scale));
+    bottom: calc(-5px * var(--base-scale));
     border: 1px solid var(--noir-gold-dim);
     border-radius: 6px;
     opacity: 0.4;
@@ -234,10 +239,10 @@
   /* Status Indicator Dot */
   .status-indicator {
     position: absolute;
-    top: -3px;
-    right: -3px;
-    width: 12px;
-    height: 12px;
+    top: calc(-3px * var(--base-scale));
+    right: calc(-3px * var(--base-scale));
+    width: calc(14px * var(--base-scale));
+    height: calc(14px * var(--base-scale));
     border-radius: 50%;
     border: 2px solid var(--noir-charcoal);
     z-index: 2;
@@ -278,16 +283,16 @@
   .player-seat.dead::after {
     content: 'R.I.P';
     position: absolute;
-    top: -10px;
+    top: calc(-12px * var(--base-scale));
     left: 50%;
     transform: translateX(-50%);
     font-family: 'Playfair Display', serif;
-    font-size: 0.6rem;
+    font-size: calc(0.7rem * var(--base-scale));
     font-weight: 700;
     letter-spacing: 0.1em;
     color: var(--text-muted);
     background: var(--noir-charcoal);
-    padding: 0.1rem 0.4rem;
+    padding: calc(0.1rem * var(--base-scale)) calc(0.4rem * var(--base-scale));
     border: 1px solid var(--color-dead);
     border-radius: 2px;
     z-index: 5;
@@ -312,19 +317,19 @@
     }
   }
 
-  /* Player Name - Brass Nameplate */
+  /* Player Name - Brass Nameplate - Larger, more readable */
   .player-name-tag {
     background: linear-gradient(180deg, var(--noir-gold-dim) 0%, var(--wood-medium) 100%);
-    padding: 0.2rem 0.5rem;
+    padding: calc(0.25rem * var(--base-scale)) calc(0.6rem * var(--base-scale));
     border-radius: 2px;
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 0.7rem;
+    font-size: calc(0.85rem * var(--base-scale));
     font-weight: 400;
     letter-spacing: 0.08em;
     color: var(--noir-black);
     white-space: nowrap;
     border: 1px solid var(--noir-gold);
-    max-width: 85px;
+    max-width: calc(120px * var(--base-scale));
     overflow: hidden;
     text-overflow: ellipsis;
     text-transform: uppercase;
@@ -337,10 +342,10 @@
     filter: grayscale(1);
   }
 
-  /* Role Label */
+  /* Role Label - Larger, more readable */
   .player-role-tag {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 0.65rem;
+    font-size: calc(0.8rem * var(--base-scale));
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
