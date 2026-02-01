@@ -59,7 +59,7 @@ def _build_fixed_roles(series_config: dict, players: list) -> dict[str, str]:
 
 
 @weave.op(call_display_name=_series_display_name)
-async def run_series(
+async def run_series(  # noqa: PLR0915
     series_id: str,
     series_name: str = "series",
     broadcaster: EventBroadcaster | None = None,
@@ -129,16 +129,22 @@ async def run_series(
             # Create appropriate runner
             if human_player:
                 # Create human adapter with broadcaster notification callback
-                async def ws_notify(msg_type: str, payload: dict) -> None:
+                # Bind loop variables as default args to avoid late binding issues
+                async def ws_notify(
+                    msg_type: str,
+                    payload: dict,
+                    _game_id: str = game_id,
+                    _human_player_id: str = human_player.id,
+                ) -> None:
                     await bc.broadcast_event(
                         series_id,
                         GameEvent(
                             id=str(uuid4()),
                             series_id=series_id,
-                            game_id=game_id,
+                            game_id=_game_id,
                             type=EventType(msg_type),
                             visibility=Visibility.PRIVATE,
-                            actor_id=human_player.id,
+                            actor_id=_human_player_id,
                             payload=payload,
                         ),
                     )
