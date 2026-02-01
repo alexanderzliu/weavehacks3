@@ -37,6 +37,10 @@ class PlayerSnapshotDict(TypedDict):
 # ============ Enums ============
 
 
+# Aliases that normalize to GOOGLE provider (Gemini rebranding)
+GOOGLE_PROVIDER_ALIASES = frozenset({"gemini", "google_gemini", "google-gemini"})
+
+
 class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
@@ -44,6 +48,12 @@ class ModelProvider(str, Enum):
     OPENAI_COMPATIBLE = "openai_compatible"
     OPENROUTER = "openrouter"
     WANDB = "wandb"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "ModelProvider | None":
+        if isinstance(value, str) and value.strip().lower() in GOOGLE_PROVIDER_ALIASES:
+            return cls.GOOGLE
+        return None
 
 
 class Role(str, Enum):

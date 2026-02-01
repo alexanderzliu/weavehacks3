@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -10,7 +11,10 @@ class Settings(BaseSettings):
     # AI Providers
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
-    GOOGLE_API_KEY: str = ""
+    GOOGLE_API_KEY: str = Field(
+        default="",
+        validation_alias=AliasChoices("GOOGLE_API_KEY", "GEMINI_API_KEY"),
+    )
     CARTESIA_API_KEY: str = ""
 
     # OpenAI-compatible endpoint (Groq, Together, Ollama, etc.)

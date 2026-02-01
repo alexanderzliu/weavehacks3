@@ -56,7 +56,9 @@ async def lifespan(app: FastAPI):
     if not available:
         logger.warning(
             "No AI provider API keys configured! "
-            "Set at least one in backend/.env: ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY"
+            "Set at least one in backend/.env: OPENAI_API_KEY, ANTHROPIC_API_KEY, "
+            "GOOGLE_API_KEY (or GEMINI_API_KEY), OPENAI_COMPATIBLE_BASE_URL + OPENAI_COMPATIBLE_API_KEY, "
+            "or OPENROUTER_API_KEY"
         )
     else:
         providers_str = ", ".join(p.value for p in available)
