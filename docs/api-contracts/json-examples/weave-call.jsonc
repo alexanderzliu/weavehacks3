@@ -44,7 +44,7 @@
 
   "attributes": {
     "env": "development",
-    "model": "gpt-4o"
+    "model": "gpt-5-mini"
   },
 
   "summary": {

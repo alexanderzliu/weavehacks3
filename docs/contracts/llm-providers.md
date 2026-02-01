@@ -34,7 +34,7 @@ def create_llm_provider(
     if provider == "openai":
         return ChatOpenAI(
             api_key=api_key or os.getenv("OPENAI_API_KEY"),
-            model=model or "gpt-4o",
+            model=model or "gpt-5-mini",
         )
     # ... handle other providers
 ```
