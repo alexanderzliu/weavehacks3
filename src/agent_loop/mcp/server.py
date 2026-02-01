@@ -25,7 +25,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from agent_loop.application.agent import AgentLoop
-from agent_loop.domain.exceptions import InvalidInputError
+from agent_loop.domain.exceptions import AgentLoopError, InvalidInputError
 from agent_loop.graph.state import DEFAULT_MAX_ITERATIONS
 from agent_loop.mcp.exception_handlers import handle_tool_error
 
@@ -130,28 +130,53 @@ async def list_tools() -> list[Tool]:
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls.
 
-    Domain exceptions are caught and formatted via exception_handlers.
+    All exceptions are caught and formatted via exception_handlers to prevent
+    MCP server crashes and provide consistent error responses.
     """
+    try:
+        return await _handle_tool_call(name, arguments)
+    except AgentLoopError as exc:
+        return handle_tool_error(exc)
+    except Exception as exc:
+        # Unexpected exceptions are wrapped and formatted
+        # Re-raise would crash the MCP server, so we format instead
+        return handle_tool_error(exc)
+
+
+async def _handle_tool_call(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    """Dispatch tool call to appropriate handler."""
     agent = _get_agent()
 
     if name == "run_agent":
-        task = arguments.get("task", "")
-        if not task:
-            raise InvalidInputError("task is required")
+        return await _run_agent_tool(agent, arguments)
 
-        thread_id = arguments.get("thread_id")
-        max_iterations = arguments.get("max_iterations", DEFAULT_MAX_ITERATIONS)
+    if name == "register_tool":
+        return _register_tool(arguments)
 
-        try:
-            result = await agent.arun(
-                task=task,
-                thread_id=thread_id,
-                max_iterations=max_iterations,
-            )
-        except Exception as exc:
-            return handle_tool_error(exc)
+    if name == "list_registered_tools":
+        return _list_registered_tools(agent)
 
-        response_text = f"""## Agent Response
+    raise InvalidInputError(f"Unknown tool: {name}")
+
+
+async def _run_agent_tool(
+    agent: AgentLoop, arguments: dict[str, Any]
+) -> list[TextContent]:
+    """Execute the run_agent tool."""
+    task = arguments.get("task", "")
+    if not task:
+        raise InvalidInputError("task is required")
+
+    thread_id = arguments.get("thread_id")
+    max_iterations = arguments.get("max_iterations", DEFAULT_MAX_ITERATIONS)
+
+    result = await agent.arun(
+        task=task,
+        thread_id=thread_id,
+        max_iterations=max_iterations,
+    )
+
+    response_text = f"""## Agent Response
 
 **Thread ID:** {result.thread_id}
 **Iterations:** {result.iterations}
@@ -161,33 +186,35 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 ### Observations
 """
-        for msg in result.state.messages:
-            if isinstance(msg, ToolMessage):
-                response_text += f"- **{msg.name or 'unknown'}**: {msg.content}\n"
+    for msg in result.state.messages:
+        if isinstance(msg, ToolMessage):
+            response_text += f"- **{msg.name or 'unknown'}**: {msg.content}\n"
 
-        return [TextContent(type="text", text=response_text)]
+    return [TextContent(type="text", text=response_text)]
 
-    elif name == "register_tool":
-        # For MCP, we can't actually register executable tools dynamically
-        # This is a placeholder that would need MCP tool forwarding
-        return [
-            TextContent(
-                type="text",
-                text=f"Tool '{arguments.get('name')}' registered (note: execution "
-                "requires implementing the tool logic in the agent-loop codebase).",
-            )
-        ]
 
-    elif name == "list_registered_tools":
-        tool_names = [tool.name for tool in agent.tools]
-        if tool_names:
-            tools_text = "\n".join(f"- {tool_name}" for tool_name in tool_names)
-        else:
-            tools_text = "No tools registered yet."
+def _register_tool(arguments: dict[str, Any]) -> list[TextContent]:
+    """Execute the register_tool tool."""
+    # For MCP, we can't actually register executable tools dynamically
+    # This is a placeholder that would need MCP tool forwarding
+    return [
+        TextContent(
+            type="text",
+            text=f"Tool '{arguments.get('name')}' registered (note: execution "
+            "requires implementing the tool logic in the agent-loop codebase).",
+        )
+    ]
 
-        return [TextContent(type="text", text=f"## Registered Tools\n\n{tools_text}")]
 
-    raise InvalidInputError(f"Unknown tool: {name}")
+def _list_registered_tools(agent: AgentLoop) -> list[TextContent]:
+    """Execute the list_registered_tools tool."""
+    tool_names = [tool.name for tool in agent.tools]
+    if tool_names:
+        tools_text = "\n".join(f"- {tool_name}" for tool_name in tool_names)
+    else:
+        tools_text = "No tools registered yet."
+
+    return [TextContent(type="text", text=f"## Registered Tools\n\n{tools_text}")]
 
 
 async def run_server() -> None:
