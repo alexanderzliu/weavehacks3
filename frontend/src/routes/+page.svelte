@@ -610,7 +610,7 @@
 		flex-direction: column;
 		gap: 1.25rem;
 		padding: 1.75rem;
-		background: linear-gradient(135deg, #1a1917 0%, #141412 100%);
+		background: var(--bg-card);
 		border: 1px solid var(--border-gold);
 		border-radius: 4px;
 		box-shadow: var(--shadow-card);

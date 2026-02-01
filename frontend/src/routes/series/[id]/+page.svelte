@@ -1153,7 +1153,7 @@
 	}
 
 	.sidebar-card {
-		background: linear-gradient(135deg, #1a1917 0%, #141412 100%);
+		background: var(--bg-card);
 		border: 1px solid var(--border-gold);
 		border-radius: 4px;
 		overflow: hidden;
@@ -1406,10 +1406,12 @@
 		align-items: center;
 		gap: 0.15rem;
 		padding: 0.4rem 0.6rem;
-		background: rgba(20, 20, 18, 0.9);
+		background: var(--bg-card-solid);
+		opacity: 0.95;
 		border: 1px solid var(--border-gold);
 		border-radius: 4px;
 		backdrop-filter: blur(4px);
+		transition: background 0.4s ease, border-color 0.4s ease;
 	}
 
 	.table-overlay.top-left {
@@ -1429,7 +1431,8 @@
 		flex-direction: row;
 		gap: 0.5rem;
 		padding: 0.5rem 0.8rem;
-		background: rgba(20, 20, 18, 0.95);
+		background: var(--bg-card-solid);
+		opacity: 0.98;
 		border: 2px solid var(--success);
 		border-radius: 4px;
 		box-shadow: 0 0 15px rgba(80, 200, 120, 0.3);
