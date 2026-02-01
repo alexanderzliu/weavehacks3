@@ -298,22 +298,31 @@
     z-index: 5;
   }
 
-  /* Speaking Indicator - Gold Glow Pulse */
+  /* Speaking Indicator - Prominent Gold Glow Pulse */
   .player-seat.speaking .player-avatar {
-    animation: speakingGlow 1.5s ease-in-out infinite;
+    animation: speakingGlow 1.2s ease-in-out infinite;
     border-color: var(--color-speaking);
+    border-width: 4px;
+    transform: scale(1.1);
+  }
+
+  .player-seat.speaking .player-avatar::before {
+    border-color: var(--color-speaking);
+    opacity: 0.8;
   }
 
   @keyframes speakingGlow {
     0%, 100% {
       box-shadow:
-        0 0 12px rgba(244, 207, 71, 0.5),
-        0 0 25px rgba(244, 207, 71, 0.3);
+        0 0 20px rgba(244, 207, 71, 0.7),
+        0 0 40px rgba(244, 207, 71, 0.4),
+        0 0 60px rgba(244, 207, 71, 0.2);
     }
     50% {
       box-shadow:
-        0 0 20px rgba(244, 207, 71, 0.7),
-        0 0 40px rgba(244, 207, 71, 0.4);
+        0 0 30px rgba(244, 207, 71, 0.9),
+        0 0 60px rgba(244, 207, 71, 0.5),
+        0 0 80px rgba(244, 207, 71, 0.3);
     }
   }
 

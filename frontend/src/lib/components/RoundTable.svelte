@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import PlayerSeat from './PlayerSeat.svelte';
   import SpeechBubble from './SpeechBubble.svelte';
-  import VoteArrow from './VoteArrow.svelte';
+  import VoteBadgeCluster from './VoteBadgeCluster.svelte';
   import type { Cheatsheet } from '$lib/types';
 
   interface Player {
@@ -89,6 +89,23 @@
     if (index === -1) return null;
     return positions[index];
   }
+
+  // Aggregate votes by target for badge clusters
+  let votesByTarget = $derived.by(() => {
+    const result = new Map<string, Array<{ id: string; name: string; role: string }>>();
+    for (const [voterId, targetId] of votes) {
+      const voter = players.find((p) => p.id === voterId);
+      if (!voter) continue;
+      const existing = result.get(targetId) || [];
+      existing.push({
+        id: voterId,
+        name: voter.name,
+        role: voter.role || 'townsperson'
+      });
+      result.set(targetId, existing);
+    }
+    return result;
+  });
 </script>
 
 <div class="table-section" bind:this={containerEl}>
@@ -124,24 +141,22 @@
       <SpeechBubble
         speakerName={speakerName || 'Unknown'}
         content={speechContent}
-        speakerPosition={getPlayerPosition(currentSpeakerId)}
-        tableCenter={{ x: centerX, y: centerY }}
+        {scaleFactor}
       />
     {/if}
 
-    <!-- Vote arrows SVG layer -->
-    <svg class="vote-arrows-layer">
-      {#each [...votes.entries()] as [voterId, targetId]}
-        {@const fromPos = getPlayerPosition(voterId)}
-        {@const toPos = getPlayerPosition(targetId)}
-        {#if fromPos && toPos}
-          <VoteArrow
-            fromPosition={{ x: fromPos.x, y: fromPos.y }}
-            toPosition={{ x: toPos.x, y: toPos.y }}
-          />
-        {/if}
-      {/each}
-    </svg>
+    <!-- Vote badge clusters -->
+    {#each [...votesByTarget.entries()] as [targetId, voters] (targetId)}
+      {@const targetPos = getPlayerPosition(targetId)}
+      {#if targetPos}
+        <VoteBadgeCluster
+          {voters}
+          targetPosition={targetPos}
+          tableCenter={{ x: centerX, y: centerY }}
+          {scaleFactor}
+        />
+      {/if}
+    {/each}
   </div>
 </div>
 
@@ -243,18 +258,6 @@
       inset 0 0 60px rgba(0, 0, 0, 0.4),
       inset 0 0 120px rgba(0, 0, 0, 0.2);
     z-index: 1;
-  }
-
-  /* Vote Arrows SVG Layer */
-  .vote-arrows-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 50;
-    overflow: visible;
   }
 
   /* Responsive adjustments - now handled dynamically via JS */

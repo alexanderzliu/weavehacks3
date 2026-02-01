@@ -1,67 +1,137 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+
   interface Props {
     speakerName: string;
     content: string;
-    speakerPosition: { x: number; y: number } | null;
-    tableCenter: { x: number; y: number };
+    scaleFactor?: number;
   }
 
-  let { speakerName, content, speakerPosition, tableCenter }: Props = $props();
+  interface QueuedSpeech {
+    speakerName: string;
+    content: string;
+  }
 
-  // Truncate content to 200 chars
+  let { speakerName, content, scaleFactor = 1 }: Props = $props();
+
+  // Queue of speeches waiting to be displayed
+  let speechQueue = $state<QueuedSpeech[]>([]);
+
+  // Currently displaying speech (separate from props)
+  let currentSpeech = $state<QueuedSpeech | null>(null);
+
+  // Typewriter effect state
+  let displayedCharCount = $state(0);
+  let typewriterInterval: ReturnType<typeof setInterval> | null = null;
+  let postStreamDelay: ReturnType<typeof setTimeout> | null = null;
+  const CHARS_PER_SECOND = 50;
+  const INTERVAL_MS = 1000 / CHARS_PER_SECOND; // 20ms per character
+  const POST_STREAM_DELAY_MS = 500; // Brief pause after streaming before next speech
+
+  // Track last seen content to detect new speeches
+  let lastSeenContent = $state<string | null>(null);
+
+  // Truncate helper
+  function truncate(text: string): string {
+    return text.length > 800 ? text.slice(0, 797) + '...' : text;
+  }
+
+  // Process the next speech in queue
+  function processNextSpeech() {
+    if (speechQueue.length === 0) {
+      return;
+    }
+
+    // Pop the first speech from queue
+    const next = speechQueue[0];
+    speechQueue = speechQueue.slice(1);
+    currentSpeech = next;
+    displayedCharCount = 0;
+
+    // Clear any existing interval
+    if (typewriterInterval) {
+      clearInterval(typewriterInterval);
+      typewriterInterval = null;
+    }
+
+    const targetContent = truncate(next.content);
+
+    // Start streaming
+    typewriterInterval = setInterval(() => {
+      if (displayedCharCount < targetContent.length) {
+        displayedCharCount++;
+      } else {
+        // Done streaming
+        if (typewriterInterval) {
+          clearInterval(typewriterInterval);
+          typewriterInterval = null;
+        }
+
+        // Wait briefly, then process next speech if any
+        postStreamDelay = setTimeout(() => {
+          postStreamDelay = null;
+          if (speechQueue.length > 0) {
+            processNextSpeech();
+          }
+        }, POST_STREAM_DELAY_MS);
+      }
+    }, INTERVAL_MS);
+  }
+
+  // When props change, queue the new speech
+  $effect(() => {
+    // Access props to create dependency
+    const newContent = content;
+    const newSpeaker = speakerName;
+
+    // Only queue if this is actually new content
+    if (newContent && newContent !== lastSeenContent) {
+      lastSeenContent = newContent;
+
+      const newSpeech: QueuedSpeech = {
+        speakerName: newSpeaker,
+        content: newContent
+      };
+
+      // If nothing is currently playing, start immediately
+      if (!currentSpeech && speechQueue.length === 0) {
+        speechQueue = [newSpeech];
+        processNextSpeech();
+      } else {
+        // Add to queue
+        speechQueue = [...speechQueue, newSpeech];
+      }
+    }
+  });
+
+  // Cleanup on destroy
+  onDestroy(() => {
+    if (typewriterInterval) {
+      clearInterval(typewriterInterval);
+    }
+    if (postStreamDelay) {
+      clearTimeout(postStreamDelay);
+    }
+  });
+
+  // The visible content based on typewriter progress
   let displayContent = $derived(
-    content.length > 200 ? content.slice(0, 197) + '...' : content
+    currentSpeech ? truncate(currentSpeech.content).slice(0, displayedCharCount) : ''
   );
 
-  // Calculate SVG tail path from bubble edge to speaker
-  let tailPath = $derived.by(() => {
-    if (!speakerPosition) return '';
-
-    // Direction from center to speaker
-    const dx = speakerPosition.x - tableCenter.x;
-    const dy = speakerPosition.y - tableCenter.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    if (distance === 0) return '';
-
-    // Normalize direction
-    const nx = dx / distance;
-    const ny = dy / distance;
-
-    // Start point (edge of bubble, about 70px from center)
-    const startX = tableCenter.x + nx * 70;
-    const startY = tableCenter.y + ny * 70;
-
-    // End point (before speaker avatar, about 40px away)
-    const endX = speakerPosition.x - nx * 40;
-    const endY = speakerPosition.y - ny * 40;
-
-    // Control point (perpendicular offset for curve)
-    const perpX = -ny * 20;
-    const perpY = nx * 20;
-    const ctrlX = (startX + endX) / 2 + perpX;
-    const ctrlY = (startY + endY) / 2 + perpY;
-
-    return `M ${startX} ${startY} Q ${ctrlX} ${ctrlY} ${endX} ${endY}`;
-  });
+  // The currently displayed speaker name
+  let displaySpeaker = $derived(currentSpeech?.speakerName || speakerName);
 </script>
 
-<div class="speech-bubble-container">
+<div class="speech-bubble-container" style="--scale: {scaleFactor};">
   <div class="speech-bubble">
     <div class="bubble-header">
-      <span class="speaker-name">{speakerName}</span>
+      <span class="speaker-name">{displaySpeaker}</span>
     </div>
     <div class="bubble-content">
       {displayContent}
     </div>
   </div>
-
-  <!-- SVG tail pointing to speaker -->
-  {#if tailPath}
-    <svg class="bubble-tail-svg">
-      <path d={tailPath} class="bubble-tail" />
-    </svg>
-  {/if}
 </div>
 
 <style>
@@ -75,7 +145,9 @@
   }
 
   .speech-bubble {
-    max-width: 300px;
+    /* Scale max-width with table size - base 280px at scale 1, up to ~400px at larger scales */
+    max-width: calc(280px * var(--scale, 1));
+    min-width: 200px;
     padding: 0.8rem 1rem;
     background: #f5e6c8;
     color: #0a0908;
@@ -109,23 +181,6 @@
 
   .bubble-content {
     color: #0a0908;
-  }
-
-  .bubble-tail-svg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    overflow: visible;
-  }
-
-  .bubble-tail {
-    stroke: #d4af37;
-    stroke-width: 3;
-    fill: none;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   }
 
   @keyframes bubbleAppear {
