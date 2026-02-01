@@ -38,6 +38,23 @@ export const snapshot: Writable<GameSnapshot | null> = writable(null);
 export const seriesProgress: Writable<SeriesProgress | null> = writable(null);
 export const audioEnabled: Writable<boolean> = writable(false);
 
+// Human player state
+export interface HumanTurnState {
+	isMyTurn: boolean;
+	action: 'speech' | 'vote' | 'night_action' | null;
+	validTargets: string[];
+	role: string | null;
+}
+
+// Human player stores
+export const humanPlayerId: Writable<string | null> = writable(null);
+export const humanTurnState: Writable<HumanTurnState> = writable({
+	isMyTurn: false,
+	action: null,
+	validTargets: [],
+	role: null
+});
+
 // Derived stores for round table UI
 export const currentSpeaker = derived(events, ($events) => {
 	const lastSpeech = [...$events].reverse().find((e) => e.type === 'speech');
@@ -209,6 +226,43 @@ function handleMessage(message: WSMessage): void {
 			audioEnabled.set(message.payload.enabled);
 			break;
 
+		// Human voice messages
+		case 'human_turn_start':
+			humanTurnState.set({
+				isMyTurn: true,
+				action: message.payload.action,
+				validTargets: [],
+				role: null
+			});
+			break;
+
+		case 'human_turn_end':
+			humanTurnState.set({
+				isMyTurn: false,
+				action: null,
+				validTargets: [],
+				role: null
+			});
+			break;
+
+		case 'human_vote_required':
+			humanTurnState.set({
+				isMyTurn: true,
+				action: 'vote',
+				validTargets: message.payload.valid_targets,
+				role: null
+			});
+			break;
+
+		case 'human_night_action_required':
+			humanTurnState.set({
+				isMyTurn: true,
+				action: 'night_action',
+				validTargets: message.payload.valid_targets,
+				role: message.payload.role
+			});
+			break;
+
 		default:
 			console.warn('Unknown message type:', message);
 	}
@@ -230,4 +284,76 @@ export function setAudioEnabled(enabled: boolean): void {
 			})
 		);
 	}
+}
+
+// Human player input functions
+
+export function sendHumanSpeech(seriesId: string, text: string): void {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+	ws.send(
+		JSON.stringify({
+			type: 'human_speech',
+			payload: {
+				series_id: seriesId,
+				text
+			}
+		})
+	);
+
+	// Clear turn state
+	humanTurnState.set({
+		isMyTurn: false,
+		action: null,
+		validTargets: [],
+		role: null
+	});
+}
+
+export function sendHumanVote(seriesId: string, target: string): void {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+	ws.send(
+		JSON.stringify({
+			type: 'human_vote',
+			payload: {
+				series_id: seriesId,
+				target
+			}
+		})
+	);
+
+	// Clear turn state
+	humanTurnState.set({
+		isMyTurn: false,
+		action: null,
+		validTargets: [],
+		role: null
+	});
+}
+
+export function sendHumanNightAction(seriesId: string, target: string): void {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+	ws.send(
+		JSON.stringify({
+			type: 'human_night_action',
+			payload: {
+				series_id: seriesId,
+				target
+			}
+		})
+	);
+
+	// Clear turn state
+	humanTurnState.set({
+		isMyTurn: false,
+		action: null,
+		validTargets: [],
+		role: null
+	});
+}
+
+export function setHumanPlayerId(playerId: string | null): void {
+	humanPlayerId.set(playerId);
 }

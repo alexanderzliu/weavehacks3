@@ -98,6 +98,7 @@ export async function createSeries(config: {
 		model_provider: string;
 		model_name: string;
 		fixed_role?: string;
+		is_human?: boolean;
 	}>;
 }): Promise<Response> {
 	return request('/series', {
@@ -161,4 +162,17 @@ export interface ProviderConfig {
 
 export interface ProvidersResponse {
 	providers: ProviderConfig[];
+}
+
+// Voice session endpoints
+export async function joinVoiceSession(seriesId: string): Promise<Response> {
+	return fetch(`${API_BASE}/series/${seriesId}/join-voice`, {
+		method: 'POST'
+	});
+}
+
+export async function leaveVoiceSession(seriesId: string): Promise<Response> {
+	return fetch(`${API_BASE}/series/${seriesId}/voice-session`, {
+		method: 'DELETE'
+	});
 }

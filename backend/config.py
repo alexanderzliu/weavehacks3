@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./mafia_ace.db"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     # AI Providers
     ANTHROPIC_API_KEY: str = ""
@@ -30,6 +31,10 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o-mini"
     ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
     GOOGLE_MODEL: str = "gemini-2.0-flash"
+
+    # Voice (Pipecat)
+    DEEPGRAM_API_KEY: str = ""
+    DAILY_API_KEY: str = ""
 
     # Weave
     WANDB_API_KEY: str = ""
