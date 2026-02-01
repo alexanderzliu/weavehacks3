@@ -24,7 +24,16 @@ from agent_loop.graph.state import AgentState
 
 
 def route_after_agent(state: AgentState) -> Literal["tools", "evaluator", "__end__"]:
-    """Route after agent node based on decision."""
+    """Route after agent node based on decision.
+
+    Checks iteration limit BEFORE routing to tools to prevent exceeding max_iterations.
+    If at limit, tool calls are skipped and we proceed to evaluator for final response.
+    """
+    # Check iteration limit first - if at limit, skip tools even if requested
+    # This prevents the agent from running more times than max_iterations
+    if state.is_iteration_limit_reached:
+        return "evaluator"
+
     last_message = state.messages[-1]
 
     # If agent made tool calls, go to tools

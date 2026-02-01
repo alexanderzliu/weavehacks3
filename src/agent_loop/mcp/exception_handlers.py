@@ -8,18 +8,39 @@ Sources:
 
 from mcp.types import TextContent
 
-from agent_loop.domain.exceptions import AgentLoopError, ExecutionError
+from agent_loop.domain.exceptions import (
+    AgentLoopError,
+    ConfigurationError,
+    ExecutionError,
+)
 
 
 def format_error_response(exc: AgentLoopError) -> list[TextContent]:
     """Format domain exception as MCP TextContent error."""
     error_type = type(exc).__name__
+
+    # ConfigurationError has extra guidance fields
+    if isinstance(exc, ConfigurationError):
+        return _format_configuration_error(exc)
+
     error_text = f"""## Error: {error_type}
 
 **Message:** {exc.message}
 """
     if exc.cause:
         error_text += f"\n**Cause:** {type(exc.cause).__name__}: {exc.cause}"
+
+    return [TextContent(type="text", text=error_text)]
+
+
+def _format_configuration_error(exc: ConfigurationError) -> list[TextContent]:
+    """Format ConfigurationError with helpful guidance."""
+    error_text = f"""## Configuration Error
+
+{exc.message}
+"""
+    if exc.help_url:
+        error_text += f"\n**Documentation:** {exc.help_url}"
 
     return [TextContent(type="text", text=error_text)]
 

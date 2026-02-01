@@ -42,3 +42,23 @@ class ExecutionError(AgentLoopError):
 
     Translates to HTTP 500 / MCP error.
     """
+
+
+class ConfigurationError(AgentLoopError):
+    """Required configuration is missing or invalid.
+
+    Provides human-readable guidance on how to fix the configuration.
+    Translates to HTTP 500 / MCP error (startup failure).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        env_var: str | None = None,
+        help_url: str | None = None,
+        cause: Exception | None = None,
+    ) -> None:
+        super().__init__(message, cause=cause)
+        self.env_var = env_var
+        self.help_url = help_url

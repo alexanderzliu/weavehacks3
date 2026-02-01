@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from agent_loop.domain.exceptions import (
     AgentLoopError,
     AuthenticationError,
+    ConfigurationError,
     ExecutionError,
     InvalidInputError,
     ProviderError,
@@ -115,6 +116,7 @@ def _get_status_for_exception(exc: AgentLoopError) -> HTTPStatus:
     status_map: dict[type[AgentLoopError], HTTPStatus] = {
         InvalidInputError: HTTPStatus.BAD_REQUEST,
         AuthenticationError: HTTPStatus.UNAUTHORIZED,
+        ConfigurationError: HTTPStatus.INTERNAL_SERVER_ERROR,
         ProviderError: HTTPStatus.BAD_GATEWAY,
         ExecutionError: HTTPStatus.INTERNAL_SERVER_ERROR,
     }
@@ -140,6 +142,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     # Register specific types first (FastAPI matches most specific)
     app.add_exception_handler(InvalidInputError, domain_error_handler)
     app.add_exception_handler(AuthenticationError, domain_error_handler)
+    app.add_exception_handler(ConfigurationError, domain_error_handler)
     app.add_exception_handler(ProviderError, domain_error_handler)
     app.add_exception_handler(ExecutionError, domain_error_handler)
     # Base class catches any other AgentLoopError subtypes
