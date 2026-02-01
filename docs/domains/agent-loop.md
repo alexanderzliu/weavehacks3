@@ -85,7 +85,14 @@ See `AGENTS.md` ([AR1a-e], [LG1a-d], [WV1a-d]).
 
 ## Thread Continuity
 
-LangGraph and Weave use **ID-based grouping** (no explicit container objects).
+Thread persistence is enabled via LangGraph checkpointer (default: `InMemorySaver`).
+
+**Checkpointer Options:**
+| Checkpointer | Persistence | Use Case |
+|--------------|-------------|----------|
+| `InMemorySaver` (default) | Within-process only | Development, testing |
+| `SqliteSaver` | File-based | Single-instance production |
+| `PostgresSaver` | Database | Multi-instance production (not yet enabled) |
 
 **Terminology**: Weave `call` = LangGraph `step` (see `metadata.step` in checkpoint)
 
@@ -97,7 +104,7 @@ thread_id: "thread-abc123"            trace_id: "trace-xyz789"
     └── Step 3 (latest)                   └── Call/Step 3 (evaluator_node)
 ```
 
-- **LangGraph**: `thread_id` groups checkpoints, each with `metadata.step`
+- **LangGraph**: `thread_id` groups checkpoints via checkpointer
 - **Weave**: `trace_id` groups calls (steps), root has `parent_id: null`
 
 See `docs/api-contracts/json-examples/README.md#id-based-grouping` for details.

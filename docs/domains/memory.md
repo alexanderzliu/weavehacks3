@@ -58,6 +58,8 @@ mirror key structures as Weave objects for versioned tracking.
 ## Memory Categories
 
 - **ConversationMemory** → `langgraph-checkpoint.jsonc`: Messages and observations per thread.
+  - Persisted via LangGraph checkpointer (default: `InMemorySaver`, ephemeral).
+  - For durable persistence, inject `SqliteSaver` or `PostgresSaver` into `AgentLoop`.
 - **PatternMemory** → `agentloop-memory.jsonc` (`pattern_entry`): Learned prompt patterns.
 - **RankingMemory** → `agentloop-memory.jsonc` (`ranking_entry`): Evaluator rankings.
 - **PreferenceMemory** → `weave-object.jsonc`: User preferences and constraints.

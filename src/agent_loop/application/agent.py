@@ -6,10 +6,16 @@ Coordinates domain logic, adapters, and LangGraph orchestration.
 See [AR1d] Application layer orchestrates domain + adapters.
 See docs/contracts/project-code-requirements.md for full requirements.
 
+Checkpointer Strategy:
+    - Default: InMemorySaver (ephemeral, within-process persistence)
+    - Optional: SqliteSaver or PostgresSaver for durable persistence
+    - Thread continuity requires a checkpointer; without one thread_id is ignored
+
 Sources:
     - Weave Init: https://docs.wandb.ai/weave/quickstart
     - LangGraph Compile: https://docs.langchain.com/oss/python/langgraph/graph-api#compiling-your-graph
     - LangGraph Checkpointer: https://langchain-ai.github.io/langgraph/concepts/persistence/
+    - InMemorySaver: https://langchain-ai.github.io/langgraph/reference/checkpoints/#inmemory
 """
 
 import asyncio
@@ -17,9 +23,11 @@ import uuid
 from typing import TYPE_CHECKING
 
 import weave
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.checkpoint.memory import InMemorySaver
 
 if TYPE_CHECKING:
-    from weave.trace.weave_client import Call
+    from weave.trace.call import Call
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
@@ -71,6 +79,11 @@ class AgentLoop:
     """Main agent loop orchestrator.
 
     Provides a simple interface for running the self-improving agent loop.
+
+    Thread Continuity:
+        Uses LangGraph checkpointer for thread-level state persistence.
+        Default: InMemorySaver (ephemeral, lost on process restart).
+        For durable persistence, inject SqliteSaver or PostgresSaver.
     """
 
     def __init__(
@@ -80,6 +93,7 @@ class AgentLoop:
         api_key: str | None = None,
         base_url: str | None = None,
         tools: list[BaseTool] | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
     ):
         """Initialize the agent loop.
 
@@ -93,6 +107,9 @@ class AgentLoop:
             api_key: API key for provider
             base_url: Base URL for OpenAI-compatible endpoints
             tools: List of LangChain tools to enable
+            checkpointer: LangGraph checkpointer for thread persistence.
+                          Default: InMemorySaver (ephemeral, within-process only).
+                          For durable persistence, pass SqliteSaver or PostgresSaver.
         """
         # Create adapters
         self.llm: BaseChatModel = create_llm_provider(
@@ -104,16 +121,21 @@ class AgentLoop:
         self.memory: MemoryStore = WeaveMemoryStore()
         self.tools: list[BaseTool] = tools or []
 
-        # Build the graph
+        # Checkpointer for thread-level state persistence
+        # Default to InMemorySaver for within-process continuity
+        # For durable persistence: SqliteSaver or PostgresSaver (not yet enabled)
+        self._checkpointer: BaseCheckpointSaver = checkpointer or InMemorySaver()
+
+        # Build and compile the graph with checkpointer
         self._graph = build_orchestrator_graph(self.llm, self.memory, self.tools)
-        self._compiled = self._graph.compile()
+        self._compiled = self._graph.compile(checkpointer=self._checkpointer)
 
     def add_tool(self, tool_instance: BaseTool) -> "AgentLoop":
         """Add a tool to the agent."""
         self.tools.append(tool_instance)
-        # Rebuild graph to include new tool
+        # Rebuild graph to include new tool (preserves checkpointer)
         self._graph = build_orchestrator_graph(self.llm, self.memory, self.tools)
-        self._compiled = self._graph.compile()
+        self._compiled = self._graph.compile(checkpointer=self._checkpointer)
         return self
 
     @weave.op(call_display_name=_format_agent_loop_display_name)
@@ -125,9 +147,13 @@ class AgentLoop:
     ) -> AgentLoopResult:
         """Run the agent loop asynchronously.
 
+        Thread continuity is enabled via the checkpointer. Same thread_id
+        resumes from previous state (within checkpointer's persistence scope).
+
         Args:
             task: The task or query for the agent
-            thread_id: Thread ID for conversation continuity
+            thread_id: Thread ID for conversation continuity. If None, generates UUID.
+                       Same thread_id resumes conversation if checkpointer persists it.
             max_iterations: Maximum iterations before stopping
 
         Returns:
@@ -135,7 +161,8 @@ class AgentLoop:
         """
         thread_id = thread_id or str(uuid.uuid4())
 
-        # Create initial state (history persistence requires LangGraph Checkpointer)
+        # Create initial state
+        # With checkpointer, previous state for this thread_id is automatically loaded
         initial_state = AgentState(
             messages=[HumanMessage(content=task)],
             task=task,

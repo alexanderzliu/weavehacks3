@@ -93,3 +93,15 @@ Based on the canonical object types:
 | Datasets | Weave | `weave-dataset.jsonc` |
 
 **Key insight**: Local JSON/JSONL is the canonical store; Weave and LangGraph provide observability and thread state.
+
+## Checkpointer Implementation
+
+LangGraph checkpointer is now enabled for thread-level state persistence:
+
+| Checkpointer | Persistence | Status |
+|--------------|-------------|--------|
+| `InMemorySaver` | Within-process only | ✅ Default |
+| `SqliteSaver` | File-based | ✅ Available (inject into AgentLoop) |
+| `PostgresSaver` | Database | ⏳ Not yet enabled (infra needed) |
+
+See `src/agent_loop/application/agent.py` for implementation.
