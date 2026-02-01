@@ -50,7 +50,7 @@ async def main():
     parser.add_argument(
         "--provider",
         default="openai",
-        choices=["anthropic", "openai", "google"],
+        choices=["anthropic", "openai", "google", "gemini", "openai_compatible", "openrouter"],
         help="LLM provider for scorer (default: openai)",
     )
     parser.add_argument(
