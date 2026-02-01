@@ -170,12 +170,19 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if visible}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div class="modal-backdrop" onclick={handleBackdropClick}>
+	<div
+		class="modal-backdrop"
+		onclick={handleBackdropClick}
+		onkeydown={(e) => e.key === 'Escape' && onClose()}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="modal-title"
+		tabindex="-1"
+	>
 		<div class="modal">
 			<header class="modal-header">
 				<div class="header-content">
-					<h2>{playerName}'s Strategy Evolution</h2>
+					<h2 id="modal-title">{playerName}'s Strategy Evolution</h2>
 					<span class="subtitle">Cheatsheet History</span>
 				</div>
 				<button class="close-btn" onclick={onClose} aria-label="Close">
