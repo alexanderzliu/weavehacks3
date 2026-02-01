@@ -12,6 +12,7 @@ class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GOOGLE = "google"
+    WANDB = "wandb"
 
 
 class Role(str, Enum):
