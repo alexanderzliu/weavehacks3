@@ -174,13 +174,14 @@ async def _run_agent_tool(agent: AgentLoop, arguments: dict[str, Any]) -> list[T
         max_iterations=max_iterations,
     )
 
+    response_content = result.response or "(No response generated)"
     response_text = f"""## Agent Response
 
 **Thread ID:** {result.thread_id}
 **Iterations:** {result.iterations}
 
 ### Response
-{result.response}
+{response_content}
 
 ### Observations
 """

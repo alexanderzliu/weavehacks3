@@ -66,7 +66,7 @@ class RunLoopResponse(BaseModel):
     """Response from running the agent loop."""
 
     thread_id: str
-    response: str
+    response: str | None = Field(description="Agent response, None if no response generated")
     iterations: int
     observations: list[ObservationResponse]
     evaluations: list[EvaluationResponse]
