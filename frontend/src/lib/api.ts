@@ -1,6 +1,6 @@
 // API client for the Mafia ACE backend
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8001/api';
 
 export async function fetchSeries(limit = 50): Promise<Response> {
 	return fetch(`${API_BASE}/series?limit=${limit}`);
@@ -68,6 +68,10 @@ export async function fetchPlayerCheatsheet(
 		? `${API_BASE}/players/${playerId}/cheatsheet?game_number=${gameNumber}`
 		: `${API_BASE}/players/${playerId}/cheatsheet`;
 	return fetch(url);
+}
+
+export async function fetchCheatsheetHistory(playerId: string): Promise<Response> {
+	return fetch(`${API_BASE}/players/${playerId}/cheatsheet/history`);
 }
 
 export async function fetchCheatsheetHistory(playerId: string): Promise<Response> {

@@ -90,6 +90,29 @@
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleString();
 	}
+
+	// W&B Inference curated models
+	const wandbModels = [
+		{ id: 'qwen3-235b', name: 'Qwen3 235B', tag: 'Balanced', price: '$0.10/1M', recommended: true },
+		{ id: 'llama-3.1-8b', name: 'Llama 3.1 8B', tag: 'Fast', price: '$0.22/1M' },
+		{ id: 'deepseek-v3', name: 'DeepSeek V3', tag: 'Reasoning', price: '$1.14/1M' },
+		{ id: 'llama-3.3-70b', name: 'Llama 3.3 70B', tag: 'Conversational', price: '$0.71/1M' },
+		{ id: 'gpt-oss-20b', name: 'GPT OSS 20B', tag: 'Low Latency', price: '$0.05/1M' }
+	];
+
+	function handleProviderChange(index: number, newProvider: string) {
+		formPlayers[index].model_provider = newProvider;
+		// Set default model when switching to wandb
+		if (newProvider === 'wandb') {
+			formPlayers[index].model_name = 'qwen3-235b';
+		} else if (newProvider === 'openai') {
+			formPlayers[index].model_name = 'gpt-4o-mini';
+		} else if (newProvider === 'anthropic') {
+			formPlayers[index].model_name = 'claude-sonnet-4-20250514';
+		} else if (newProvider === 'google') {
+			formPlayers[index].model_name = 'gemini-2.0-flash';
+		}
+	}
 </script>
 
 <div class="page">
@@ -154,17 +177,31 @@
 										class="player-name-input"
 									/>
 									<div class="player-model-row">
-										<select bind:value={player.model_provider}>
+										<select
+											value={player.model_provider}
+											onchange={(e) => handleProviderChange(i, e.currentTarget.value)}
+										>
 											<option value="anthropic">Anthropic</option>
 											<option value="openai">OpenAI</option>
 											<option value="google">Google</option>
+											<option value="wandb">W&amp;B Inference</option>
 										</select>
-										<input
-											type="text"
-											bind:value={player.model_name}
-											placeholder="Model"
-											class="model-input"
-										/>
+										{#if player.model_provider === 'wandb'}
+											<select bind:value={player.model_name} class="model-input">
+												{#each wandbModels as model}
+													<option value={model.id}>
+														{model.name} ({model.tag}) - {model.price}{model.recommended ? ' *' : ''}
+													</option>
+												{/each}
+											</select>
+										{:else}
+											<input
+												type="text"
+												bind:value={player.model_name}
+												placeholder="Model"
+												class="model-input"
+											/>
+										{/if}
 										<select bind:value={player.fixed_role} class="role-select">
 											<option value="">Random</option>
 											<option value="mafia">Mafia</option>

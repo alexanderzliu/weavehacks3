@@ -31,6 +31,16 @@ class LLMParseError(LLMError):
     pass
 
 
+# Map user-friendly IDs to full W&B Inference model names
+WANDB_MODEL_MAP = {
+    "llama-3.1-8b": "meta-llama/Llama-3.1-8B-Instruct",
+    "qwen3-235b": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    "deepseek-v3": "deepseek-ai/DeepSeek-V3-0324",
+    "llama-3.3-70b": "meta-llama/Llama-3.3-70B-Instruct",
+    "gpt-oss-20b": "openai/GPT-OSS-20B",
+}
+
+
 class LLMClient:
     """Unified client for multiple LLM providers."""
 
@@ -38,6 +48,7 @@ class LLMClient:
         self._anthropic: Optional[anthropic.AsyncAnthropic] = None
         self._openai: Optional[openai.AsyncOpenAI] = None
         self._google_configured = False
+        self._wandb: Optional[openai.AsyncOpenAI] = None
 
     def _get_anthropic(self) -> anthropic.AsyncAnthropic:
         if self._anthropic is None:
@@ -53,6 +64,14 @@ class LLMClient:
         if not self._google_configured:
             genai.configure(api_key=settings.GOOGLE_API_KEY)
             self._google_configured = True
+
+    def _get_wandb(self) -> openai.AsyncOpenAI:
+        if self._wandb is None:
+            self._wandb = openai.AsyncOpenAI(
+                base_url="https://api.inference.wandb.ai/v1",
+                api_key=settings.WANDB_API_KEY,
+            )
+        return self._wandb
 
     async def complete(
         self,
@@ -79,6 +98,11 @@ class LLMClient:
             elif provider == ModelProvider.GOOGLE:
                 return await asyncio.wait_for(
                     self._google_complete(model_name, system_prompt, user_prompt),
+                    timeout=timeout,
+                )
+            elif provider == ModelProvider.WANDB:
+                return await asyncio.wait_for(
+                    self._wandb_complete(model_name, system_prompt, user_prompt),
                     timeout=timeout,
                 )
             else:
@@ -137,6 +161,25 @@ class LLMClient:
             return response.text
 
         return await loop.run_in_executor(None, sync_generate)
+
+    async def _wandb_complete(
+        self,
+        model_name: str,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        # Map short ID to full model name
+        full_model_name = WANDB_MODEL_MAP.get(model_name, model_name)
+        client = self._get_wandb()
+        response = await client.chat.completions.create(
+            model=full_model_name,
+            max_completion_tokens=2048,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        return response.choices[0].message.content
 
     async def complete_json(
         self,
