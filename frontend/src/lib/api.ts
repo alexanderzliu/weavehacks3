@@ -1,6 +1,6 @@
 // API client for the Mafia ACE backend
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8001/api';
 
 type JsonRecord = Record<string, unknown>;
 
