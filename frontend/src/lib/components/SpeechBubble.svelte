@@ -119,8 +119,8 @@
     max-width: calc(280px * var(--scale, 1));
     min-width: 200px;
     padding: 0.8rem 1rem;
-    background: #f5e6c8;
-    color: #0a0908;
+    background: var(--noir-cream, #f5e6c8);
+    color: var(--noir-black, #0a0908);
     border-radius: 12px;
     font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 0.85rem;
@@ -129,8 +129,9 @@
     text-align: center;
     box-shadow:
       0 6px 20px rgba(0, 0, 0, 0.5),
-      0 0 0 2px #a68829;
+      0 0 0 2px var(--noir-gold-dim, #a68829);
     animation: bubbleAppear 0.3s ease-out;
+    transition: background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease;
   }
 
   .bubble-header {
@@ -146,11 +147,13 @@
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #d4af37;
+    color: var(--noir-gold, #d4af37);
+    transition: color 0.4s ease;
   }
 
   .bubble-content {
-    color: #0a0908;
+    color: var(--noir-black, #0a0908);
+    transition: color 0.4s ease;
   }
 
   @keyframes bubbleAppear {

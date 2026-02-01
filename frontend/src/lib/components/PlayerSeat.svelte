@@ -95,32 +95,6 @@
 </div>
 
 <style>
-  /* CSS Variables - Noir Palette */
-  :root {
-    --noir-charcoal: #141412;
-    --noir-gold: #d4af37;
-    --noir-gold-dim: #a68829;
-    --noir-gold-bright: #f4cf47;
-    --noir-burgundy-deep: #4a1f24;
-    --noir-black: #0a0908;
-
-    --color-mafia: #c41e3a;
-    --color-mafia-glow: rgba(196, 30, 58, 0.5);
-    --color-doctor: #228b22;
-    --color-doctor-glow: rgba(34, 139, 34, 0.5);
-    --color-detective: #6b3fa0;
-    --color-detective-glow: rgba(107, 63, 160, 0.5);
-    --color-villager: #b8860b;
-    --color-villager-glow: rgba(184, 134, 11, 0.5);
-
-    --color-alive: #50c878;
-    --color-dead: #6e7681;
-    --color-speaking: #f4cf47;
-
-    --wood-medium: #4a3728;
-    --text-muted: #6a5d4d;
-  }
-
   /* Player Seat - Positioned absolutely */
   .player-seat {
     position: absolute;

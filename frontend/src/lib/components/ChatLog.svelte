@@ -138,6 +138,7 @@
 		flex-direction: column;
 		overflow: hidden;
 		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+		transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 	}
 
 	/* Scrollable Chat Container */
@@ -156,11 +157,12 @@
 		align-items: flex-start;
 		gap: 0.5rem;
 		padding: 0.3rem 0.5rem;
-		background: rgba(0, 0, 0, 0.2);
+		background: var(--noir-smoke, rgba(0, 0, 0, 0.2));
 		border-radius: 3px;
 		font-size: 0.8rem;
 		line-height: 1.4;
 		animation: messageSlideIn 0.25s ease-out;
+		transition: background 0.4s ease;
 	}
 
 	@keyframes messageSlideIn {

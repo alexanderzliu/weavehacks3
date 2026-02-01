@@ -170,25 +170,6 @@
 </div>
 
 <style>
-  /* CSS Variables - Noir Palette */
-  :root {
-    --noir-black: #0a0908;
-    --noir-charcoal: #141412;
-    --noir-dark: #1a1917;
-    --noir-gold: #d4af37;
-    --noir-gold-dim: #a68829;
-    --noir-gold-bright: #f4cf47;
-    --border-gold: #8b7355;
-    --shadow-noir: 0 10px 40px rgba(0, 0, 0, 0.6);
-
-    /* Felt & Wood */
-    --felt-green: #1a4d2e;
-    --felt-green-dark: #0f2d1a;
-    --wood-dark: #2a1f14;
-    --wood-medium: #4a3728;
-    --wood-light: #6a5040;
-  }
-
   /* Table Section - Primary Focus */
   .table-section {
     flex: 1;
@@ -204,6 +185,7 @@
     overflow: visible;
     /* Add padding to prevent player cards from overflowing */
     padding: 80px;
+    transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
   }
 
   /* Overhead Lamp Glow */

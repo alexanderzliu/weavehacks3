@@ -97,15 +97,16 @@
 		margin-bottom: 12px;
 		width: 320px;
 		max-height: 400px;
-		background: linear-gradient(135deg, #1a1917 0%, #0f0e0d 100%);
+		background: var(--bg-card, linear-gradient(135deg, #1a1917 0%, #0f0e0d 100%));
 		border: 1px solid var(--noir-gold-dim, #a68829);
 		border-radius: 6px;
 		box-shadow:
 			0 8px 32px rgba(0, 0, 0, 0.6),
-			0 0 20px rgba(212, 175, 55, 0.1);
+			0 0 20px var(--accent-glow, rgba(212, 175, 55, 0.1));
 		z-index: 9999;
 		overflow: hidden;
 		animation: tooltipAppearAbove 0.2s ease-out;
+		transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 	}
 
 	/* Position below the player */
@@ -214,7 +215,7 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 2rem 1rem;
-		color: #8a8070;
+		color: var(--text-muted, #8a8070);
 	}
 
 	.loading-spinner {
@@ -239,7 +240,7 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 2rem 1rem;
-		color: #6a5d4d;
+		color: var(--text-muted, #6a5d4d);
 		text-align: center;
 	}
 
@@ -288,8 +289,8 @@
 	.cheatsheet-item {
 		padding: 0.5rem;
 		margin-bottom: 0.35rem;
-		background: rgba(0, 0, 0, 0.2);
-		border-left: 2px solid rgba(212, 175, 55, 0.3);
+		background: var(--noir-smoke, rgba(0, 0, 0, 0.2));
+		border-left: 2px solid var(--accent-glow, rgba(212, 175, 55, 0.3));
 		border-radius: 0 3px 3px 0;
 		transition: all 0.15s ease;
 	}
@@ -300,7 +301,7 @@
 
 	.cheatsheet-item:hover {
 		background: rgba(0, 0, 0, 0.35);
-		border-left-color: var(--noir-gold, #d4af37);
+		border-left-color: var(--accent, #d4af37);
 	}
 
 	.item-content {
@@ -308,7 +309,8 @@
 		font-family: 'Cormorant Garamond', serif;
 		font-size: 0.85rem;
 		line-height: 1.4;
-		color: #c9c0b0;
+		color: var(--text-secondary, #c9c0b0);
+		transition: color 0.4s ease;
 	}
 
 	.item-meta {

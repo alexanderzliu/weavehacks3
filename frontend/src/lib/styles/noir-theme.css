@@ -5,7 +5,7 @@
    ============================================ */
 
 /* ============================================
-   CSS VARIABLES - NOIR PALETTE
+   CSS VARIABLES - NOIR PALETTE (DARK DEFAULT)
    ============================================ */
 :root {
     /* Noir Color Palette */
@@ -66,6 +66,70 @@
     --phase-discussion: linear-gradient(135deg, #2a2010 0%, #3d3020 50%, #2a2010 100%);
     --phase-voting: linear-gradient(135deg, #2d1515 0%, #4a2020 50%, #2d1515 100%);
     --phase-over: linear-gradient(135deg, #1a1510 0%, #2a2520 100%);
+}
+
+/* ============================================
+   LIGHT THEME OVERRIDES - GOLDEN HOUR PALETTE
+   ============================================ */
+:root.light-theme {
+    /* Noir Color Palette - Inverted for light */
+    --noir-black: #faf6f0;
+    --noir-charcoal: #f5efe6;
+    --noir-dark: #ede5d8;
+    --noir-burgundy: #8b2942;
+    --noir-burgundy-deep: #6e2035;
+    --noir-gold: #8b6914;
+    --noir-gold-dim: #6a5010;
+    --noir-gold-bright: #a87f1a;
+    --noir-cream: #2a1f1a;
+    --noir-smoke: rgba(42, 31, 26, 0.04);
+
+    /* Felt & Wood - Lighter versions */
+    --felt-green: #d4e5db;
+    --felt-green-dark: #c5d9ce;
+    --wood-dark: #c9b896;
+    --wood-medium: #ddd2be;
+    --wood-light: #ede5d8;
+    --wood-grain: #e0d4c0;
+
+    /* Role Colors - Adjusted for light backgrounds */
+    --color-mafia: #a81e35;
+    --color-mafia-bg: rgba(168, 30, 53, 0.1);
+    --color-mafia-glow: rgba(168, 30, 53, 0.3);
+
+    --color-doctor: #1a6b1a;
+    --color-doctor-bg: rgba(26, 107, 26, 0.1);
+    --color-doctor-glow: rgba(26, 107, 26, 0.3);
+
+    --color-detective: #5a3090;
+    --color-detective-bg: rgba(90, 48, 144, 0.1);
+    --color-detective-glow: rgba(90, 48, 144, 0.3);
+
+    --color-villager: #7a5a08;
+    --color-villager-bg: rgba(122, 90, 8, 0.1);
+    --color-villager-glow: rgba(122, 90, 8, 0.3);
+
+    /* Status */
+    --color-alive: #2d7a4a;
+    --color-dead: #9a9a9a;
+    --color-speaking: #a87f1a;
+
+    /* Text - Dark for light backgrounds */
+    --text-primary: #2a1f1a;
+    --text-secondary: #5c4d42;
+    --text-muted: #8a7b6e;
+    --text-gold: #8b6914;
+
+    /* Borders & Shadows */
+    --border-gold: #c9b896;
+    --border-dark: #e0d6c8;
+    --shadow-noir: 0 10px 40px rgba(42, 31, 26, 0.12);
+
+    /* Phase Gradients - Light versions */
+    --phase-night: linear-gradient(135deg, #e8e0f0 0%, #d8d0e8 50%, #e8e0f0 100%);
+    --phase-discussion: linear-gradient(135deg, #f5efe6 0%, #ede5d8 50%, #f5efe6 100%);
+    --phase-voting: linear-gradient(135deg, #f5e8ea 0%, #edd8dc 50%, #f5e8ea 100%);
+    --phase-over: linear-gradient(135deg, #f5efe6 0%, #ede5d8 100%);
 }
 
 /* ============================================
