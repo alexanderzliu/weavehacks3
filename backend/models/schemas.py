@@ -75,6 +75,7 @@ class SeriesStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     STOP_REQUESTED = "stop_requested"
+    STOPPED = "stopped"  # Gracefully stopped by user before completion
     COMPLETED = "completed"
 
 

@@ -57,12 +57,17 @@ async def run_series(
     )
 
     try:
+        game_number = 0  # Track progress for status broadcasts
         for game_number in range(1, total_games + 1):
-            # Check for stop request
+            # Check for stop request before starting next game
             async with get_db_session() as db:
                 series = await crud.get_series(db, series_id)
                 if series.status == SeriesStatus.STOP_REQUESTED.value:
-                    break
+                    await crud.update_series_status(db, series_id, SeriesStatus.STOPPED)
+                    await bc.broadcast_series_status(
+                        series_id, SeriesStatus.STOPPED.value, game_number - 1, total_games
+                    )
+                    return
 
             # Update current game number
             async with get_db_session() as db:
@@ -105,6 +110,15 @@ async def run_series(
             runner = GameRunner(game_id, series_id, game_seed, broadcaster=bc)
             winner = await runner.run()
 
+            # If game was stopped (no winner), mark series as stopped
+            if winner is None:
+                async with get_db_session() as db:
+                    await crud.update_series_status(db, series_id, SeriesStatus.STOPPED)
+                await bc.broadcast_series_status(
+                    series_id, SeriesStatus.STOPPED.value, game_number, total_games
+                )
+                return
+
             # Check for stop request before reflection
             async with get_db_session() as db:
                 series = await crud.get_series(db, series_id)
@@ -114,9 +128,15 @@ async def run_series(
             await run_reflections(series_id, game_id, game_number, winner.value, bc)
 
             if stop_after_reflection:
-                break
+                # Series was stopped between game end and reflection
+                async with get_db_session() as db:
+                    await crud.update_series_status(db, series_id, SeriesStatus.STOPPED)
+                await bc.broadcast_series_status(
+                    series_id, SeriesStatus.STOPPED.value, game_number, total_games
+                )
+                return
 
-        # Mark series complete
+        # Mark series complete (all games finished normally)
         async with get_db_session() as db:
             await crud.update_series_status(db, series_id, SeriesStatus.COMPLETED)
 

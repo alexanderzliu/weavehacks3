@@ -32,11 +32,19 @@ from models.schemas import (
     GamePlayerDict,
     ModelProvider,
     PlayerSnapshotDict,
+    SeriesStatus,
     Visibility,
     Winner,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class GameStoppedException(Exception):
+    """Raised when a game is stopped by user request."""
+
+    pass
+
 
 # Role distribution per player count
 ROLE_DISTRIBUTION = {
@@ -189,9 +197,17 @@ class GameRunner:
             return Winner.MAFIA
         return None
 
+    async def _check_stop_requested(self) -> None:
+        """Check if series stop has been requested. Raises GameStoppedException if so."""
+        async with get_db_session() as db:
+            series = await crud.get_series(db, self.series_id)
+            if series and series.status == SeriesStatus.STOP_REQUESTED.value:
+                logger.info("Stop requested for series %s, stopping game", self.series_id)
+                raise GameStoppedException()
+
     @weave.op()
-    async def run(self) -> Winner:
-        """Run the game to completion."""
+    async def run(self) -> Winner | None:
+        """Run the game to completion. Returns None if stopped early."""
         await self._load_game_players()
 
         # Start game
@@ -206,19 +222,33 @@ class GameRunner:
             payload={"player_count": len(self._game_players)},
         )
 
-        # Game loop
-        while True:
-            self._day_number += 1
+        winner: Winner | None = None
+        stopped = False
 
-            # Day phase
-            winner = await self._run_day_phase()
-            if winner:
-                break
+        try:
+            # Game loop
+            while True:
+                self._day_number += 1
 
-            # Night phase
-            winner = await self._run_night_phase()
-            if winner:
-                break
+                # Check for stop before day phase
+                await self._check_stop_requested()
+
+                # Day phase
+                winner = await self._run_day_phase()
+                if winner:
+                    break
+
+                # Check for stop before night phase
+                await self._check_stop_requested()
+
+                # Night phase
+                winner = await self._run_night_phase()
+                if winner:
+                    break
+
+        except GameStoppedException:
+            stopped = True
+            logger.info("Game %s stopped by user request", self.game_id)
 
         # End game
         async with get_db_session() as db:
@@ -226,14 +256,18 @@ class GameRunner:
                 db,
                 self.game_id,
                 status=GamePhase.COMPLETED,
-                winner=winner.value,
+                winner=winner.value if winner else None,
                 completed_at=datetime.utcnow(),
             )
+
+        payload = {"day_number": self._day_number, "stopped": stopped}
+        if winner:
+            payload["winner"] = winner.value
 
         await self._emit_event(
             EventType.GAME_ENDED,
             Visibility.PUBLIC,
-            payload={"winner": winner.value, "day_number": self._day_number},
+            payload=payload,
         )
 
         return winner
