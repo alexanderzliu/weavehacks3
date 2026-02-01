@@ -1,12 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fetchSeries, createSeries, startSeries, extractErrorDetails } from '$lib/api';
+	import {
+		fetchSeries,
+		createSeries,
+		startSeries,
+		extractErrorDetails,
+		fetchProvidersConfig,
+		type ProviderConfig
+	} from '$lib/api';
 	import type { SeriesResponse } from '$lib/types';
 
 	let seriesList = $state<SeriesResponse[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let showCreateForm = $state(false);
+
+	// Provider config from backend
+	let providerConfigs = $state<ProviderConfig[]>([]);
+	let providersLoaded = $state(false);
+	let providersError = $state<string | null>(null);
 
 	// Form state
 	let formName = $state('AI Mafia Tournament');
@@ -20,8 +32,36 @@
 	]);
 
 	onMount(async () => {
-		await loadSeries();
+		await Promise.all([loadSeries(), loadProvidersConfig()]);
 	});
+
+	async function loadProvidersConfig() {
+		try {
+			const res = await fetchProvidersConfig();
+			if (!res.ok) {
+				const details = await extractErrorDetails(res);
+				providersError = details || 'Failed to load provider configuration';
+				return;
+			}
+			const data = await res.json();
+			providerConfigs = data.providers;
+
+			// Find first available provider and set as default for all players
+			const firstAvailable = providerConfigs.find((p) => p.available);
+			if (firstAvailable) {
+				formPlayers = formPlayers.map((p) => ({
+					...p,
+					model_provider: firstAvailable.id,
+					model_name: firstAvailable.default_model
+				}));
+			} else {
+				providersError = 'No LLM providers configured. Add API keys in backend/.env';
+			}
+			providersLoaded = true;
+		} catch (e) {
+			providersError = e instanceof Error ? e.message : 'Failed to load provider configuration';
+		}
+	}
 
 	async function loadSeries() {
 		loading = true;
@@ -50,7 +90,9 @@
 				}))
 			});
 			if (!result.ok) {
-				error = result.error || 'Failed to create series';
+				const details = await extractErrorDetails(result);
+				console.error('[handleCreateSeries] Failed:', details);
+				error = details || 'Failed to create series';
 				return;
 			}
 			showCreateForm = false;
@@ -75,12 +117,13 @@
 
 	function addPlayer() {
 		if (formPlayers.length < 7) {
+			const firstAvailable = providerConfigs.find((p) => p.available);
 			formPlayers = [
 				...formPlayers,
 				{
 					name: `Player ${formPlayers.length + 1}`,
-					model_provider: 'openai_compatible',
-					model_name: 'gpt-4o-mini',
+					model_provider: firstAvailable?.id ?? 'openai',
+					model_name: firstAvailable?.default_model ?? '',
 					fixed_role: ''
 				}
 			];
@@ -106,20 +149,14 @@
 		{ id: 'gpt-oss-20b', name: 'GPT OSS 20B', tag: 'Low Latency', price: '$0.05/1M' }
 	];
 
+	function getDefaultModelForProvider(providerId: string): string {
+		const config = providerConfigs.find((p) => p.id === providerId);
+		return config?.default_model ?? '';
+	}
+
 	function handleProviderChange(index: number, newProvider: string) {
 		formPlayers[index].model_provider = newProvider;
-		// Set default model when switching providers
-		if (newProvider === 'wandb') {
-			formPlayers[index].model_name = 'qwen3-235b';
-		} else if (newProvider === 'openai' || newProvider === 'openai_compatible') {
-			formPlayers[index].model_name = 'gpt-4o-mini';
-		} else if (newProvider === 'anthropic') {
-			formPlayers[index].model_name = 'claude-sonnet-4-20250514';
-		} else if (newProvider === 'google') {
-			formPlayers[index].model_name = 'gemini-2.0-flash';
-		} else if (newProvider === 'openrouter') {
-			formPlayers[index].model_name = 'anthropic/claude-3.5-sonnet';
-		}
+		formPlayers[index].model_name = getDefaultModelForProvider(newProvider);
 	}
 </script>
 
@@ -139,10 +176,10 @@
 		</button>
 	</div>
 
-	{#if error}
+	{#if error || providersError}
 		<div class="error-banner">
 			<span class="error-icon">!</span>
-			<span>{error}</span>
+			<span>{error || providersError}</span>
 		</div>
 	{/if}
 
