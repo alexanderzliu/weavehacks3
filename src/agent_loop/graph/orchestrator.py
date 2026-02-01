@@ -19,7 +19,7 @@ from langchain_core.tools import BaseTool
 from langgraph.graph import END, StateGraph
 
 from agent_loop.domain.ports.memory_store import MemoryStore
-from agent_loop.graph.nodes import create_nodes
+from agent_loop.graph.nodes import _is_complete_response, create_nodes
 from agent_loop.graph.state import AgentState
 
 
@@ -27,21 +27,27 @@ def route_after_agent(state: AgentState) -> Literal["tools", "evaluator", "__end
     """Route after agent node based on decision.
 
     Checks iteration limit BEFORE routing to tools to prevent exceeding max_iterations.
-    If at limit, tool calls are skipped and we proceed to evaluator for final response.
+    If at limit with no tool calls, ends immediately with agent's response.
+    If at limit with tool calls, skips tools and proceeds to evaluator for final response.
     """
-    # Check iteration limit first - if at limit, skip tools even if requested
-    # This prevents the agent from running more times than max_iterations
+    last_message = state.messages[-1]
+    has_tool_calls = isinstance(last_message, AIMessage) and last_message.tool_calls
+
+    # At iteration limit: end immediately if no tool calls, else skip tools to evaluator
     if state.is_iteration_limit_reached:
+        if not has_tool_calls:
+            # Agent provided final response at limit - validate quality before ending
+            if _is_complete_response(last_message):
+                return "__end__"
+            # Response too short - go to evaluator for improvement
+            return "evaluator"
+        # Has tool calls but at limit: skip tools, go to evaluator for final response
         return "evaluator"
 
-    last_message = state.messages[-1]
-
-    # If agent made tool calls, go to tools
-    # Source: https://python.langchain.com/docs/how_to/tool_calling/#checking-for-tool-calls
-    if isinstance(last_message, AIMessage) and last_message.tool_calls:
+    # Normal flow: tools if requested, otherwise evaluator
+    if has_tool_calls:
         return "tools"
 
-    # If agent just responded, go to evaluator
     return "evaluator"
 
 
