@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     OPENAI_COMPATIBLE_BASE_URL: str = ""
     OPENAI_COMPATIBLE_API_KEY: str = ""
 
+    # OpenRouter
+    OPENROUTER_API_KEY: str = ""
+
     # Weave
     WANDB_API_KEY: str = ""
     WEAVE_ENTITY: str = "williamacallahan-william-a-callahan-cfa"
@@ -32,7 +35,7 @@ class Settings(BaseSettings):
     LLM_MAX_RETRIES: int = 2
 
     class Config:
-        env_file = ".env"
+        env_file = ("../.env", ".env")  # Check parent dir first, then local
         extra = "ignore"
 
 

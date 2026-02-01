@@ -52,6 +52,8 @@ def get_available_providers() -> list[ModelProvider]:
         available.append(ModelProvider.GOOGLE)
     if settings.OPENAI_COMPATIBLE_BASE_URL and settings.OPENAI_COMPATIBLE_API_KEY:
         available.append(ModelProvider.OPENAI_COMPATIBLE)
+    if settings.OPENROUTER_API_KEY:
+        available.append(ModelProvider.OPENROUTER)
     if settings.WANDB_API_KEY:
         available.append(ModelProvider.WANDB)
     return available
@@ -74,6 +76,7 @@ class LLMClient:
         self._anthropic: anthropic.AsyncAnthropic | None = None
         self._openai: openai.AsyncOpenAI | None = None
         self._openai_compatible: openai.AsyncOpenAI | None = None
+        self._openrouter: openai.AsyncOpenAI | None = None
         self._google_configured = False
         self._wandb: openai.AsyncOpenAI | None = None
 
@@ -94,6 +97,14 @@ class LLMClient:
                 base_url=settings.OPENAI_COMPATIBLE_BASE_URL,
             )
         return self._openai_compatible
+
+    def _get_openrouter(self) -> openai.AsyncOpenAI:
+        if self._openrouter is None:
+            self._openrouter = openai.AsyncOpenAI(
+                api_key=settings.OPENROUTER_API_KEY,
+                base_url="https://openrouter.ai/api/v1",
+            )
+        return self._openrouter
 
     def _ensure_google(self) -> None:
         if not self._google_configured:
@@ -139,6 +150,13 @@ class LLMClient:
                 return await asyncio.wait_for(
                     self._openai_chat_complete(
                         self._get_openai_compatible(), model_name, system_prompt, user_prompt
+                    ),
+                    timeout=timeout,
+                )
+            elif provider == ModelProvider.OPENROUTER:
+                return await asyncio.wait_for(
+                    self._openai_chat_complete(
+                        self._get_openrouter(), model_name, system_prompt, user_prompt
                     ),
                     timeout=timeout,
                 )

@@ -42,6 +42,7 @@ class ModelProvider(str, Enum):
     OPENAI = "openai"
     GOOGLE = "google"
     OPENAI_COMPATIBLE = "openai_compatible"
+    OPENROUTER = "openrouter"
     WANDB = "wandb"
 
 

@@ -1,6 +1,6 @@
 // API Types matching the backend schemas
 
-export type ModelProvider = 'anthropic' | 'openai' | 'google' | 'openai_compatible' | 'wandb';
+export type ModelProvider = 'anthropic' | 'openai' | 'google' | 'openai_compatible' | 'openrouter' | 'wandb';
 
 export type Role = 'mafia' | 'doctor' | 'deputy' | 'townsperson';
 
