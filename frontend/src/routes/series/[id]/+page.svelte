@@ -658,7 +658,7 @@
 				{#if currentSeriesStatus === 'pending'}
 					<button onclick={handleStart}>Start Series</button>
 				{:else if currentSeriesStatus === 'in_progress'}
-					<button class="secondary" onclick={handleStop}>Stop After Current Game</button>
+					<button class="secondary" onclick={handleStop}>Stop After Current Phase</button>
 				{:else if currentSeriesStatus === 'stop_requested'}
 					<button class="secondary" disabled>Stopping...</button>
 				{/if}
