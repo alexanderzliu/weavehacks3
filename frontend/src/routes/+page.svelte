@@ -24,11 +24,11 @@
 	let formName = $state('AI Mafia Tournament');
 	let formTotalGames = $state(5);
 	let formPlayers = $state([
-		{ name: 'Alice', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Bob', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Charlie', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Diana', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Eve', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '' }
+		{ name: 'Alice', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false },
+		{ name: 'Bob', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false },
+		{ name: 'Charlie', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false },
+		{ name: 'Diana', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false },
+		{ name: 'Eve', model_provider: 'openai_compatible', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false }
 	]);
 
 	onMount(async () => {
@@ -124,7 +124,8 @@
 					name: `Player ${formPlayers.length + 1}`,
 					model_provider: firstAvailable?.id ?? 'openai',
 					model_name: firstAvailable?.default_model ?? '',
-					fixed_role: ''
+					fixed_role: '',
+					is_human: false
 				}
 			];
 		}

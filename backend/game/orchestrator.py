@@ -9,8 +9,10 @@ from weave.trace.weave_client import Call
 
 from db import crud
 from db.database import get_db_session
+from game.human_adapter import HumanPlayerAdapter
 from game.reflection import ReflectionPipeline
 from game.runner import GameRunner, assign_roles
+from game.voice_runner import VoiceGameRunner
 from models.protocols import EventBroadcaster, NullBroadcaster
 from models.schemas import (
     EventType,
@@ -19,6 +21,7 @@ from models.schemas import (
     SeriesStatus,
     Visibility,
 )
+from websocket.voice_session import voice_session_manager
 
 
 def _series_display_name(call: Call) -> str:
@@ -56,7 +59,7 @@ def _build_fixed_roles(series_config: dict, players: list) -> dict[str, str]:
 
 
 @weave.op(call_display_name=_series_display_name)
-async def run_series(
+async def run_series(  # noqa: PLR0915
     series_id: str,
     series_name: str = "series",
     broadcaster: EventBroadcaster | None = None,
@@ -120,8 +123,45 @@ async def run_series(
             fixed_roles = _build_fixed_roles(series.config, players)
             await assign_roles(game_id, player_ids, fixed_roles, game_seed)
 
-            # Run game
-            runner = GameRunner(game_id, series_id, game_seed, broadcaster=bc)
+            # Check if any player is human
+            human_player = next((p for p in players if getattr(p, "is_human", False)), None)
+
+            # Create appropriate runner
+            if human_player:
+                # Create human adapter with broadcaster notification callback
+                # Bind loop variables as default args to avoid late binding issues
+                async def ws_notify(
+                    msg_type: str,
+                    payload: dict,
+                    _game_id: str = game_id,
+                    _human_player_id: str = human_player.id,
+                ) -> None:
+                    await bc.broadcast_event(
+                        series_id,
+                        GameEvent(
+                            id=str(uuid4()),
+                            series_id=series_id,
+                            game_id=_game_id,
+                            type=EventType(msg_type),
+                            visibility=Visibility.PRIVATE,
+                            actor_id=_human_player_id,
+                            payload=payload,
+                        ),
+                    )
+
+                human_adapter = HumanPlayerAdapter(
+                    player_id=human_player.id,
+                    player_name=human_player.name,
+                    ws_notify=ws_notify,
+                )
+                voice_session_manager.set_adapter(series_id, human_adapter)
+
+                runner = VoiceGameRunner(
+                    game_id, series_id, human_adapter, game_seed, broadcaster=bc
+                )
+            else:
+                runner = GameRunner(game_id, series_id, game_seed, broadcaster=bc)
+
             winner = await runner.run()
 
             # If game was stopped (no winner), mark series as stopped

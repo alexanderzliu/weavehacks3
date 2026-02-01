@@ -52,6 +52,7 @@ class Player(Base):
     name = Column(String, nullable=False)
     model_provider = Column(String, nullable=False)  # anthropic, openai, google
     model_name = Column(String, nullable=False)
+    is_human = Column(Boolean, default=False)  # True if this is a human player slot
     created_at = Column(DateTime, default=_utc_now)
 
     # Relationships

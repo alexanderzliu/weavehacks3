@@ -40,6 +40,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.routes import router as api_router
+from db import redis_cache
 from db.database import init_db
 from websocket.manager import router as ws_router
 
@@ -73,7 +74,7 @@ async def lifespan(app: FastAPI):
             logger.warning("Weave initialization failed: %s", e)
     yield
     # Shutdown
-    pass
+    await redis_cache.close_redis()
 
 
 app = FastAPI(
@@ -101,7 +102,7 @@ async def validation_exception_handler(
 ) -> JSONResponse:
     """Log validation errors with context before returning 422."""
     errors = exc.errors()
-    detail_message = _format_validation_errors(errors)
+    detail_message = _format_validation_errors(list(errors))
     logger.warning(
         "Request validation failed: %s %s",
         request.method,
