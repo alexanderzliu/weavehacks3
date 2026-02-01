@@ -73,7 +73,3 @@ export async function fetchPlayerCheatsheet(
 export async function fetchCheatsheetHistory(playerId: string): Promise<Response> {
 	return fetch(`${API_BASE}/players/${playerId}/cheatsheet/history`);
 }
-
-export async function fetchCheatsheetHistory(playerId: string): Promise<Response> {
-	return fetch(`${API_BASE}/players/${playerId}/cheatsheet/history`);
-}
