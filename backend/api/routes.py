@@ -66,6 +66,19 @@ async def start_series(
             detail=f"Series is already {series.status}, cannot start",
         )
 
+    # Check if there's a human player - they must join first
+    players = await crud.get_players_for_series(db, series_id)
+    human_player = next((p for p in players if p.is_human), None)
+
+    if human_player:
+        from websocket.voice_session import voice_session_manager
+        voice_session = await voice_session_manager.get_session(series_id)
+        if not voice_session:
+            raise HTTPException(
+                status_code=400,
+                detail="Human player must join before starting the game. Click 'Join as Human Player' first.",
+            )
+
     # Import here to avoid circular imports
     from game.orchestrator import run_series
 

@@ -77,6 +77,8 @@ class MafiaVoicePipeline:
     - Receiving human speech via WebRTC and transcribing with Deepgram
     - Playing AI speech via Cartesia TTS
     - Voice activity detection for natural turn-taking
+
+    Turn-based: Only accepts speech when `_is_listening` is True.
     """
 
     def __init__(
@@ -95,9 +97,16 @@ class MafiaVoicePipeline:
         self._transport: Optional[DailyTransport] = None
         self._tts: Optional[CartesiaTTSService] = None
 
+        # Turn-based listening - only accept speech when True
+        self._is_listening = False
+
         # Speech waiting
         self._speech_event = asyncio.Event()
         self._speech_result: Optional[HumanSpeechResult] = None
+        self._accumulated_text: list[str] = []  # Accumulate partial transcriptions
+        self._speech_complete_event = asyncio.Event()  # Set when speech is truly complete
+        self._speech_debounce_task: Optional[asyncio.Task] = None
+        self._speech_debounce_seconds = 2.5  # Wait this long after last speech before completing
 
         # Callbacks
         self._on_human_speech: Optional[Callable[[str], Awaitable[None]]] = None
@@ -163,12 +172,65 @@ class MafiaVoicePipeline:
             await self._runner.stop()
 
     async def _handle_transcription(self, text: str) -> None:
-        """Handle completed transcription from human."""
-        self._speech_result = HumanSpeechResult(text=text, success=True)
+        """Handle completed transcription from human.
+
+        Only processes if we're actively listening (human's turn).
+        Uses debouncing to wait for user to finish speaking before returning.
+        """
+        if not self._is_listening:
+            # Ignore speech when it's not the human's turn
+            print(f"[Voice] Ignoring out-of-turn speech: {text[:50]}...")
+            return
+
+        # Accumulate transcription
+        if text.strip():
+            self._accumulated_text.append(text.strip())
+            print(f"[Voice] Received transcription: {text.strip()}")
+
+        # Signal that we got some speech (for the first speech indicator)
         self._speech_event.set()
 
-        if self._on_human_speech:
-            await self._on_human_speech(text)
+        # Cancel any existing debounce task and start a new one
+        # This waits for a pause in speech before marking complete
+        if self._speech_debounce_task:
+            self._speech_debounce_task.cancel()
+
+        self._speech_debounce_task = asyncio.create_task(
+            self._debounce_speech_complete()
+        )
+
+    async def _debounce_speech_complete(self) -> None:
+        """Wait for speech to settle before marking complete."""
+        try:
+            await asyncio.sleep(self._speech_debounce_seconds)
+            # No more speech came in during the debounce period
+            if self._accumulated_text:
+                full_text = " ".join(self._accumulated_text)
+                self._speech_result = HumanSpeechResult(text=full_text, success=True)
+                print(f"[Voice] Speech complete after debounce: {full_text[:100]}...")
+                self._speech_complete_event.set()
+
+                if self._on_human_speech:
+                    await self._on_human_speech(full_text)
+        except asyncio.CancelledError:
+            # More speech came in, debounce was reset
+            pass
+
+    def start_listening(self) -> None:
+        """Enable listening for human speech.
+
+        Call this before notifying the frontend to avoid race conditions
+        where the user starts speaking before the pipeline is ready.
+        """
+        self._speech_event.clear()
+        self._speech_complete_event.clear()
+        self._speech_result = None
+        self._accumulated_text = []
+        if self._speech_debounce_task:
+            self._speech_debounce_task.cancel()
+            self._speech_debounce_task = None
+        self._is_listening = True
+        print("[Voice] Listening enabled, ready for human speech")
 
     async def wait_for_human_speech(
         self,
@@ -176,18 +238,32 @@ class MafiaVoicePipeline:
     ) -> HumanSpeechResult:
         """Wait for human to speak and return transcription.
 
+        Note: Call start_listening() first to enable listening before
+        notifying the frontend. This method will wait for speech to complete.
+
         Args:
             timeout_seconds: Maximum time to wait for speech
 
         Returns:
             HumanSpeechResult with transcribed text or timeout indication
         """
-        self._speech_event.clear()
-        self._speech_result = None
+        # Ensure listening is enabled (in case called without start_listening)
+        if not self._is_listening:
+            self._speech_event.clear()
+            self._speech_complete_event.clear()
+            self._speech_result = None
+            self._accumulated_text = []
+            if self._speech_debounce_task:
+                self._speech_debounce_task.cancel()
+                self._speech_debounce_task = None
+            self._is_listening = True
+
+        print(f"[Voice] Waiting for human speech (timeout: {timeout_seconds}s)")
 
         try:
+            # Wait for speech to complete (after debounce)
             await asyncio.wait_for(
-                self._speech_event.wait(),
+                self._speech_complete_event.wait(),
                 timeout=timeout_seconds,
             )
             return self._speech_result or HumanSpeechResult(
@@ -195,11 +271,28 @@ class MafiaVoicePipeline:
                 success=False,
             )
         except asyncio.TimeoutError:
+            # Cancel any pending debounce
+            if self._speech_debounce_task:
+                self._speech_debounce_task.cancel()
+                self._speech_debounce_task = None
+
+            # Check if we got any partial speech
+            if self._accumulated_text:
+                full_text = " ".join(self._accumulated_text)
+                print(f"[Voice] Timeout with accumulated speech: {full_text[:100]}...")
+                return HumanSpeechResult(text=full_text, success=True, timed_out=True)
             return HumanSpeechResult(
                 text="I have nothing to add at this time.",
                 success=True,
                 timed_out=True,
             )
+        finally:
+            # Stop listening when turn ends
+            self._is_listening = False
+            if self._speech_debounce_task:
+                self._speech_debounce_task.cancel()
+                self._speech_debounce_task = None
+            print("[Voice] Stopped listening")
 
     async def queue_ai_speech(
         self,

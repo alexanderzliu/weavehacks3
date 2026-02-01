@@ -12,6 +12,7 @@ from db import crud
 from game.runner import GameRunner, assign_roles
 from game.voice_runner import VoiceGameRunner
 from game.human_adapter import HumanPlayerAdapter
+from voice_pipeline.pipeline import MafiaVoicePipeline
 from game.reflection import ReflectionPipeline
 from models.schemas import (
     SeriesStatus,
@@ -105,6 +106,7 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
             )
 
             # Create appropriate runner
+            voice_pipeline = None
             if human_player:
                 # Create human adapter with WebSocket notification callback
                 async def ws_notify(msg_type: str, payload: dict):
@@ -119,13 +121,29 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
                 )
                 voice_session_manager.set_adapter(series_id, human_adapter)
 
+                # Get voice session and create pipeline if session exists
+                voice_session = await voice_session_manager.get_session(series_id)
+                if voice_session and voice_session.room_url and voice_session.room_token:
+                    voice_pipeline = MafiaVoicePipeline(
+                        room_url=voice_session.room_url,
+                        room_token=voice_session.room_token,
+                        player_name=human_player.name,
+                    )
+                    await voice_pipeline.start()
+                    human_adapter.set_pipeline(voice_pipeline)
+
                 runner = VoiceGameRunner(
                     game_id, series_id, human_adapter, game_seed
                 )
             else:
                 runner = GameRunner(game_id, series_id, game_seed)
 
-            winner = await runner.run()
+            try:
+                winner = await runner.run()
+            finally:
+                # Stop voice pipeline after game ends
+                if voice_pipeline:
+                    await voice_pipeline.stop()
 
             # Check for stop request before reflection
             async with get_db_session() as db:

@@ -60,7 +60,7 @@ class VoiceSessionManager:
             The created VoiceSession
         """
         from uuid import uuid4
-        from voice_pipeline.pipeline import create_daily_room
+        from config import get_settings
 
         async with self._lock:
             # Check if session already exists
@@ -70,8 +70,17 @@ class VoiceSessionManager:
                     # Return existing session
                     return existing
 
-            # Create Daily room for voice
-            room_url, room_token = await create_daily_room()
+            # Try to create Daily room for voice (if API key is configured)
+            room_url = None
+            room_token = None
+            settings = get_settings()
+
+            if settings.DAILY_API_KEY:
+                try:
+                    from voice_pipeline.pipeline import create_daily_room
+                    room_url, room_token = await create_daily_room()
+                except Exception as e:
+                    print(f"Failed to create Daily room (voice will be text-only): {e}")
 
             session = VoiceSession(
                 session_id=str(uuid4()),

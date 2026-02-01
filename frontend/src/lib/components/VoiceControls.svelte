@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { voiceState, toggleMute, connectVoice, disconnectVoice } from '$lib/voice';
+	import { voiceState, toggleMute, connectVoice, disconnectVoice, setMuted } from '$lib/voice';
 
 	interface Props {
 		roomUrl: string | null;
@@ -11,6 +11,19 @@
 	let { roomUrl, roomToken, playerName, isHumanTurn = false }: Props = $props();
 
 	let isConnecting = $state(false);
+	let previousTurnState = $state(false);
+
+	// Auto-unmute when it becomes human's turn, auto-mute when turn ends
+	$effect(() => {
+		if (isHumanTurn && !previousTurnState && $voiceState.connectionState === 'connected') {
+			// Turn just started - unmute
+			setMuted(false);
+		} else if (!isHumanTurn && previousTurnState && $voiceState.connectionState === 'connected') {
+			// Turn just ended - mute
+			setMuted(true);
+		}
+		previousTurnState = isHumanTurn;
+	});
 
 	async function handleConnect() {
 		if (!roomUrl || !roomToken) return;
@@ -18,6 +31,8 @@
 		isConnecting = true;
 		try {
 			await connectVoice(roomUrl, roomToken);
+			// Start muted - will unmute when it's our turn
+			setMuted(true);
 		} finally {
 			isConnecting = false;
 		}
@@ -55,18 +70,30 @@
 		</div>
 	{:else if $voiceState.connectionState === 'connected'}
 		<div class="connected-controls">
-			<div class="status-indicator" class:speaking={isHumanTurn}>
-				<span class="pulse-dot" class:muted={$voiceState.isMuted}></span>
-				<span class="status-text">
-					{#if isHumanTurn}
-						Your turn to speak
-					{:else if $voiceState.isMuted}
-						Muted
-					{:else}
-						{playerName} (You)
-					{/if}
-				</span>
-			</div>
+			{#if isHumanTurn}
+				<div class="speak-now-indicator">
+					<div class="mic-icon-animated">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+							<path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+							<line x1="12" y1="19" x2="12" y2="23" />
+							<line x1="8" y1="23" x2="16" y2="23" />
+						</svg>
+					</div>
+					<span class="speak-now-text">SPEAK NOW</span>
+				</div>
+			{:else}
+				<div class="status-indicator">
+					<span class="pulse-dot" class:muted={$voiceState.isMuted}></span>
+					<span class="status-text">
+						{#if $voiceState.isMuted}
+							Waiting for your turn...
+						{:else}
+							{playerName} (You)
+						{/if}
+					</span>
+				</div>
+			{/if}
 
 			<div class="control-buttons">
 				<button
@@ -74,6 +101,7 @@
 					class:muted={$voiceState.isMuted}
 					onclick={handleToggleMute}
 					title={$voiceState.isMuted ? 'Unmute' : 'Mute'}
+					disabled={isHumanTurn}
 				>
 					{#if $voiceState.isMuted}
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -324,5 +352,65 @@
 
 	.retry-btn:hover {
 		background: rgba(196, 30, 58, 0.1);
+	}
+
+	/* Speak Now indicator */
+	.speak-now-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex: 1;
+		padding: 0.5rem 1rem;
+		background: rgba(80, 200, 120, 0.15);
+		border: 2px solid var(--success);
+		border-radius: 8px;
+		animation: speakNowPulse 1.5s ease-in-out infinite;
+	}
+
+	@keyframes speakNowPulse {
+		0%, 100% {
+			box-shadow: 0 0 10px rgba(80, 200, 120, 0.3);
+		}
+		50% {
+			box-shadow: 0 0 20px rgba(80, 200, 120, 0.6);
+		}
+	}
+
+	.mic-icon-animated {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		color: var(--success);
+		animation: micPulse 1s ease-in-out infinite;
+	}
+
+	.mic-icon-animated svg {
+		width: 24px;
+		height: 24px;
+	}
+
+	@keyframes micPulse {
+		0%, 100% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.1);
+		}
+	}
+
+	.speak-now-text {
+		font-family: var(--font-heading);
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--success);
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+	}
+
+	.mute-btn:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
 	}
 </style>

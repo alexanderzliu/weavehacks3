@@ -98,19 +98,56 @@ class HumanPlayerAdapter:
         self._speech_event.clear()
         self._speech_text = None
 
-        # Notify frontend that human should speak
-        await self._ws_notify("human_turn_start", {
-            "player_id": self.player_id,
-            "player_name": self.player_name,
-            "action": "speech",
-        })
-
-        # Wait for speech from pipeline or WebSocket
+        # Wait for speech from pipeline and/or WebSocket
         if self._pipeline:
-            result = await self._pipeline.wait_for_human_speech(self._speech_timeout)
-            text = result.text
+            # Start listening BEFORE notifying frontend to avoid race condition
+            # where user speaks before pipeline is ready
+            self._pipeline.start_listening()
+
+            # Notify frontend that human should speak.
+            # Note: We always allow WebSocket text input, even when a voice pipeline
+            # is configured. This makes "type to speak" a reliable fallback if the
+            # user hasn't joined voice chat or STT isn't working.
+            await self._ws_notify("human_turn_start", {
+                "player_id": self.player_id,
+                "player_name": self.player_name,
+                "action": "speech",
+            })
+
+            pipeline_task = asyncio.create_task(
+                self._pipeline.wait_for_human_speech(self._speech_timeout)
+            )
+            ws_task = asyncio.create_task(self._speech_event.wait())
+
+            done, pending = await asyncio.wait(
+                {pipeline_task, ws_task},
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=self._speech_timeout,
+            )
+
+            for task in pending:
+                task.cancel()
+            for task in pending:
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+            if not done:
+                text = "I have nothing to add at this time."
+            elif pipeline_task in done:
+                result = pipeline_task.result()
+                text = result.text or "I have nothing to add at this time."
+            else:
+                text = self._speech_text or "I have nothing to add at this time."
         else:
-            # Fallback: wait for text via WebSocket
+            # Fallback: notify frontend then wait for text via WebSocket
+            await self._ws_notify("human_turn_start", {
+                "player_id": self.player_id,
+                "player_name": self.player_name,
+                "action": "speech",
+            })
+
             try:
                 await asyncio.wait_for(
                     self._speech_event.wait(),

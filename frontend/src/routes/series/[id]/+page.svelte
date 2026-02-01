@@ -384,23 +384,25 @@
 			const res = await joinVoiceSession(series.id);
 			if (res.ok) {
 				const data = await res.json();
-				if (!data.room_url || !data.room_token) {
-					voiceError = 'Voice room not available. Check DAILY_API_KEY in backend.';
-					return;
-				}
+				// Join works even without voice (text-only mode)
 				voiceSession = {
-					roomUrl: data.room_url,
-					roomToken: data.room_token,
+					roomUrl: data.room_url || null,
+					roomToken: data.room_token || null,
 					playerId: data.player_id,
 					playerName: data.player_name
 				};
 				setHumanPlayerId(data.player_id);
+
+				// Show info if voice isn't available
+				if (!data.room_url) {
+					console.log('Voice not available - using text input mode');
+				}
 			} else {
 				const errorData = await res.json().catch(() => ({}));
-				voiceError = errorData.detail || 'Failed to join voice session';
+				voiceError = errorData.detail || 'Failed to join as human player';
 			}
 		} catch (e) {
-			voiceError = e instanceof Error ? e.message : 'Error joining voice session';
+			voiceError = e instanceof Error ? e.message : 'Error joining as human player';
 		}
 	}
 
@@ -697,7 +699,16 @@
 
 			<div class="actions">
 				{#if series.status === 'pending'}
-					<button onclick={handleStart}>Start Series</button>
+					{#if hasHumanPlayer && !voiceSession.playerId}
+						<span class="join-first-hint">Join as human player first →</span>
+					{/if}
+					<button
+						onclick={handleStart}
+						disabled={hasHumanPlayer && !voiceSession.playerId}
+						title={hasHumanPlayer && !voiceSession.playerId ? 'Human player must join first' : 'Start the series'}
+					>
+						Start Series
+					</button>
 				{:else if series.status === 'in_progress'}
 					<button class="secondary" onclick={handleStop}>Stop After Current Game</button>
 				{/if}
@@ -754,20 +765,25 @@
 
 				{#if hasHumanPlayer}
 					<div class="voice-section">
-						{#if voiceSession.roomUrl}
-							<VoiceControls
-								roomUrl={voiceSession.roomUrl}
-								roomToken={voiceSession.roomToken}
-								playerName={voiceSession.playerName || 'Human'}
-								isHumanTurn={$humanTurnState.isMyTurn && $humanTurnState.action === 'speech'}
-							/>
+						{#if voiceSession.playerId}
+							{#if voiceSession.roomUrl}
+								<VoiceControls
+									roomUrl={voiceSession.roomUrl}
+									roomToken={voiceSession.roomToken}
+									playerName={voiceSession.playerName || 'Human'}
+									isHumanTurn={$humanTurnState.isMyTurn && $humanTurnState.action === 'speech'}
+								/>
+							{:else}
+								<div class="human-joined-badge">
+									<span class="joined-dot"></span>
+									<span>Playing as {voiceSession.playerName || 'Human'} (Text Mode)</span>
+								</div>
+							{/if}
 						{:else}
 							<button class="join-voice-btn" onclick={handleJoinVoice}>
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-									<path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-									<line x1="12" y1="19" x2="12" y2="23" />
-									<line x1="8" y1="23" x2="16" y2="23" />
+									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+									<circle cx="9" cy="7" r="4"/>
 								</svg>
 								Join as Human Player
 							</button>
@@ -1625,5 +1641,38 @@
 		padding: 0.25rem 0.5rem;
 		background: rgba(196, 30, 58, 0.1);
 		border-radius: 4px;
+	}
+
+	.human-joined-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: rgba(80, 200, 120, 0.1);
+		border: 1px solid var(--success);
+		border-radius: 4px;
+		color: var(--success);
+		font-family: var(--font-body);
+		font-size: 0.85rem;
+	}
+
+	.joined-dot {
+		width: 8px;
+		height: 8px;
+		background: var(--success);
+		border-radius: 50%;
+		animation: pulse 2s ease-in-out infinite;
+	}
+
+	.join-first-hint {
+		font-family: var(--font-body);
+		font-size: 0.85rem;
+		color: var(--accent);
+		font-style: italic;
+	}
+
+	button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 </style>

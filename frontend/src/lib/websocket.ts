@@ -89,6 +89,7 @@ export const currentVotes = derived(events, ($events) => {
 let ws: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let currentSeriesId: string | null = null;
+let currentPlayerId: string | null = null;
 
 export function connect(seriesId: string): void {
 	// Clean up existing connection
@@ -106,16 +107,16 @@ export function connect(seriesId: string): void {
 				error: null
 			});
 
-			// Subscribe to series
-			ws?.send(
-				JSON.stringify({
-					type: 'subscribe',
-					payload: {
-						series_id: seriesId,
-						viewer_mode: true
-					}
-				})
-			);
+			// Subscribe to series (with player_id if we're a human player)
+			const payload: Record<string, unknown> = {
+				series_id: seriesId,
+				viewer_mode: !currentPlayerId
+			};
+			if (currentPlayerId) {
+				payload.player_id = currentPlayerId;
+			}
+
+			ws?.send(JSON.stringify({ type: 'subscribe', payload }));
 		};
 
 		ws.onmessage = (event) => {
@@ -159,6 +160,7 @@ export function connect(seriesId: string): void {
 
 export function disconnect(): void {
 	currentSeriesId = null;
+	currentPlayerId = null;
 
 	if (reconnectTimeout) {
 		clearTimeout(reconnectTimeout);
@@ -210,41 +212,49 @@ function handleMessage(message: WSMessage): void {
 			}));
 			break;
 
-		// Human voice messages
+		// Human turn messages - only respond if we're the target player
 		case 'human_turn_start':
-			humanTurnState.set({
-				isMyTurn: true,
-				action: message.payload.action,
-				validTargets: [],
-				role: null
-			});
+			if (message.payload.player_id === currentPlayerId) {
+				humanTurnState.set({
+					isMyTurn: true,
+					action: message.payload.action,
+					validTargets: [],
+					role: null
+				});
+			}
 			break;
 
 		case 'human_turn_end':
-			humanTurnState.set({
-				isMyTurn: false,
-				action: null,
-				validTargets: [],
-				role: null
-			});
+			if (message.payload.player_id === currentPlayerId) {
+				humanTurnState.set({
+					isMyTurn: false,
+					action: null,
+					validTargets: [],
+					role: null
+				});
+			}
 			break;
 
 		case 'human_vote_required':
-			humanTurnState.set({
-				isMyTurn: true,
-				action: 'vote',
-				validTargets: message.payload.valid_targets,
-				role: null
-			});
+			if (message.payload.player_id === currentPlayerId) {
+				humanTurnState.set({
+					isMyTurn: true,
+					action: 'vote',
+					validTargets: message.payload.valid_targets,
+					role: null
+				});
+			}
 			break;
 
 		case 'human_night_action_required':
-			humanTurnState.set({
-				isMyTurn: true,
-				action: 'night_action',
-				validTargets: message.payload.valid_targets,
-				role: message.payload.role
-			});
+			if (message.payload.player_id === currentPlayerId) {
+				humanTurnState.set({
+					isMyTurn: true,
+					action: 'night_action',
+					validTargets: message.payload.valid_targets,
+					role: message.payload.role
+				});
+			}
 			break;
 
 		default:
@@ -326,4 +336,19 @@ export function sendHumanNightAction(seriesId: string, target: string): void {
 
 export function setHumanPlayerId(playerId: string | null): void {
 	humanPlayerId.set(playerId);
+	currentPlayerId = playerId;
+
+	// Re-subscribe with player_id so server can send human turn messages
+	if (ws && ws.readyState === WebSocket.OPEN && currentSeriesId && playerId) {
+		ws.send(
+			JSON.stringify({
+				type: 'subscribe',
+				payload: {
+					series_id: currentSeriesId,
+					viewer_mode: false,
+					player_id: playerId
+				}
+			})
+		);
+	}
 }

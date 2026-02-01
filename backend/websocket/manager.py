@@ -231,27 +231,37 @@ class ConnectionManager:
     ) -> bool:
         """Send a message to a specific player in a series.
 
+        Broadcasts to all subscribers - frontend filters by player_id.
+        This ensures the message is always delivered even if subscription
+        state is not perfectly synced.
+
         Args:
             series_id: The series ID
-            player_id: The target player ID
+            player_id: The target player ID (included in payload for filtering)
             msg_type: Message type
             payload: Message payload
 
         Returns:
-            True if message was sent successfully
+            True if message was sent to at least one subscriber
         """
         async with self._lock:
             subscriptions = self._subscriptions.get(series_id, []).copy()
 
-        message = WSMessage(type=msg_type, payload=payload)
+        if not subscriptions:
+            return False
+
+        # Include player_id in payload so frontend can filter
+        payload_with_id = {**payload, "player_id": player_id}
+        message = WSMessage(type=msg_type, payload=payload_with_id)
+
+        sent = False
         for sub in subscriptions:
-            if sub.player_id == player_id:
-                try:
-                    await self._send_message(sub.websocket, message)
-                    return True
-                except Exception:
-                    pass
-        return False
+            try:
+                await self._send_message(sub.websocket, message)
+                sent = True
+            except Exception:
+                pass
+        return sent
 
 
 # Global connection manager instance
