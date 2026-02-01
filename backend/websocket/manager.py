@@ -7,14 +7,14 @@ from uuid import uuid4
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
+from db import crud
+from db.database import get_db_session
+from models.schemas import GameEvent, Visibility
+
 logger = logging.getLogger(__name__)
 
 # Exceptions that indicate a closed/broken WebSocket connection
 WebSocketSendError = (WebSocketDisconnect, RuntimeError, ConnectionError)
-
-from db import crud
-from db.database import get_db_session
-from models.schemas import GameEvent, Visibility
 
 router = APIRouter()
 
@@ -232,7 +232,7 @@ class ConnectionManager:
                 await self._send_message(websocket, message)
         except Exception as e:
             # Don't fail subscription if initial snapshot fails
-            print(f"Failed to send initial snapshot: {e}")
+            logger.warning("Failed to send initial snapshot for series %s: %s", series_id, e)
 
 
 # Global connection manager instance

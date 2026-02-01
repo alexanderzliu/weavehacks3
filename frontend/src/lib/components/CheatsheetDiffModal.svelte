@@ -406,7 +406,7 @@
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.8);
+		background: rgba(0, 0, 0, 0.7);
 		backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
@@ -425,7 +425,7 @@
 	}
 
 	.modal {
-		background: linear-gradient(135deg, #1a1917 0%, #0f0e0d 100%);
+		background: var(--bg-card, linear-gradient(135deg, #1a1917 0%, #0f0e0d 100%));
 		border: 1px solid var(--noir-gold-dim, #a68829);
 		border-radius: 8px;
 		width: 90vw;
@@ -435,8 +435,9 @@
 		flex-direction: column;
 		box-shadow:
 			0 20px 60px rgba(0, 0, 0, 0.7),
-			0 0 40px rgba(212, 175, 55, 0.1);
+			0 0 40px var(--accent-glow, rgba(212, 175, 55, 0.1));
 		animation: slideIn 0.3s ease-out;
+		transition: background 0.4s ease, border-color 0.4s ease;
 	}
 
 	@keyframes slideIn {

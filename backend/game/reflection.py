@@ -1,8 +1,11 @@
 """Reflection pipeline - Reflector and Curator for cheatsheet evolution."""
 
+import logging
 from uuid import uuid4
 
 import weave
+
+logger = logging.getLogger(__name__)
 
 from db import crud
 from db.database import get_db_session
@@ -253,8 +256,9 @@ class ReflectionPipeline:
                 model_provider=model_provider,
                 model_name=model_name,
             )
-        except LLMError:
+        except LLMError as e:
             # Keep current cheatsheet on curator failure
+            logger.warning("Curator failed for player %s, keeping current cheatsheet: %s", player_id, e)
             final_cheatsheet = current_cheatsheet
 
         # Persist new version

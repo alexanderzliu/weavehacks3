@@ -1,5 +1,6 @@
 """Game runner - executes a single Mafia game."""
 
+import contextlib
 import random
 from datetime import datetime
 from uuid import uuid4
@@ -301,10 +302,8 @@ class GameRunner:
         # Generate TTS audio (optional - graceful skip if not configured or fails)
         audio_base64: str | None = None
         if tts_client.is_configured():
-            try:
+            with contextlib.suppress(TTSError):
                 audio_base64 = await tts_client.generate_speech(content, player["name"])
-            except TTSError:
-                pass  # TTS is optional enhancement; continue without audio
 
         # Record in discussion
         self._day_discussion.append(f"{player['name']}: {content}")
