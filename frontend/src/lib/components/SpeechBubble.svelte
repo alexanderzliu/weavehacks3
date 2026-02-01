@@ -8,9 +8,9 @@
 
   let { speakerName, content, speakerPosition, tableCenter }: Props = $props();
 
-  // Truncate content to 120 chars
+  // Truncate content to 200 chars
   let displayContent = $derived(
-    content.length > 120 ? content.slice(0, 117) + '...' : content
+    content.length > 200 ? content.slice(0, 197) + '...' : content
   );
 
   // Calculate SVG tail path from bubble edge to speaker
@@ -75,15 +75,15 @@
   }
 
   .speech-bubble {
-    max-width: 260px;
+    max-width: 300px;
     padding: 0.8rem 1rem;
     background: #f5e6c8;
     color: #0a0908;
     border-radius: 12px;
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 500;
-    line-height: 1.5;
+    line-height: 1.4;
     text-align: center;
     box-shadow:
       0 6px 20px rgba(0, 0, 0, 0.5),

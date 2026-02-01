@@ -1,13 +1,43 @@
 <script lang="ts">
+  import CheatsheetTooltip from './CheatsheetTooltip.svelte';
+  import type { Cheatsheet } from '$lib/types';
+
   interface Props {
     name: string;
+    playerId?: string;
     role: string;  // 'mafia' | 'doctor' | 'deputy' | 'townsperson'
     isAlive: boolean;
     isSpeaking: boolean;
     position: { x: number; y: number };
+    tableCenter?: { x: number; y: number };
+    cheatsheet?: Cheatsheet | null;
+    cheatsheetLoading?: boolean;
+    onHover?: (playerId: string | null) => void;
   }
 
-  let { name, role, isAlive, isSpeaking, position }: Props = $props();
+  let { name, playerId, role, isAlive, isSpeaking, position, tableCenter, cheatsheet = null, cheatsheetLoading = false, onHover }: Props = $props();
+
+  // Determine tooltip position: show below for top-half players (to avoid header), above for bottom-half
+  let tooltipPosition = $derived.by((): 'above' | 'below' => {
+    if (!tableCenter) return 'below';
+    return position.y < tableCenter.y ? 'below' : 'above';
+  });
+
+  let isHovered = $state(false);
+
+  function handleMouseEnter() {
+    isHovered = true;
+    if (playerId && onHover) {
+      onHover(playerId);
+    }
+  }
+
+  function handleMouseLeave() {
+    isHovered = false;
+    if (onHover) {
+      onHover(null);
+    }
+  }
 
   // Map role to display name and CSS class
   const roleMap: Record<string, { display: string; cssClass: string }> = {
@@ -34,8 +64,21 @@
   class="player-seat {roleInfo.cssClass}"
   class:dead={!isAlive}
   class:speaking={isSpeaking}
+  class:hovered={isHovered}
   style="left: {position.x}px; top: {position.y}px;"
+  onmouseenter={handleMouseEnter}
+  onmouseleave={handleMouseLeave}
+  role="button"
+  tabindex="0"
 >
+  <CheatsheetTooltip
+    {cheatsheet}
+    playerName={name}
+    loading={cheatsheetLoading}
+    visible={isHovered && playerId !== undefined}
+    position={tooltipPosition}
+  />
+
   <div class="player-avatar-container">
     <div class="player-avatar">
       <span class="avatar-emoji">{emoji}</span>
@@ -87,6 +130,20 @@
     transform: translate(-50%, -50%);
     transition: all 0.4s ease;
     animation: seatAppear 0.6s ease-out backwards;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .player-seat.hovered {
+    z-index: 9999;
+  }
+
+  .player-seat.hovered .player-avatar {
+    transform: scale(1.08);
+    border-color: var(--noir-gold-bright);
+    box-shadow:
+      0 0 20px rgba(212, 175, 55, 0.4),
+      0 8px 20px rgba(0, 0, 0, 0.4);
   }
 
   @keyframes seatAppear {

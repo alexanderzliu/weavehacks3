@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { fetchSeriesById, fetchSeriesGames, stopSeries, startSeries } from '$lib/api';
+	import { fetchSeriesById, fetchSeriesGames, stopSeries, startSeries, fetchSeriesPlayers, fetchPlayerCheatsheet } from '$lib/api';
 	import {
 		connect,
 		disconnect,
@@ -12,7 +12,7 @@
 		currentSpeaker,
 		currentVotes
 	} from '$lib/websocket';
-	import type { SeriesResponse } from '$lib/types';
+	import type { SeriesResponse, Cheatsheet } from '$lib/types';
 	import RoundTable from '$lib/components/RoundTable.svelte';
 	import ChatLog from '$lib/components/ChatLog.svelte';
 	import PhaseIndicator from '$lib/components/PhaseIndicator.svelte';
@@ -30,11 +30,19 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	// Player name lookup from series config
-	let playerNames = $derived.by(() => {
-		if (!series) return new Map<string, string>();
+	// Player data with UUIDs
+	let seriesPlayers = $state<Array<{ id: string; name: string; model_provider: string; model_name: string }>>([]);
+
+	// Cheatsheet cache and loading state
+	let cheatsheets = $state<Map<string, Cheatsheet>>(new Map());
+	let loadingCheatsheet = $state<string | null>(null);
+
+	// Player name to ID lookup
+	let playerIdByName = $derived.by(() => {
 		const map = new Map<string, string>();
-		// We'll need to fetch player IDs - for now use names directly
+		for (const p of seriesPlayers) {
+			map.set(p.name, p.id);
+		}
 		return map;
 	});
 
@@ -48,7 +56,8 @@
 				id: p.name,
 				name: p.name,
 				role: p.role,
-				is_alive: p.is_alive
+				is_alive: p.is_alive,
+				playerId: playerIdByName.get(p.name)
 			}));
 		}
 
@@ -57,7 +66,8 @@
 			id: p.name,
 			name: p.name,
 			role: undefined,
-			is_alive: true
+			is_alive: true,
+			playerId: playerIdByName.get(p.name)
 		}));
 	});
 
@@ -77,20 +87,52 @@
 		loading = true;
 		error = null;
 		try {
-			const [seriesRes, gamesRes] = await Promise.all([
+			const [seriesRes, gamesRes, playersRes] = await Promise.all([
 				fetchSeriesById(seriesId),
-				fetchSeriesGames(seriesId)
+				fetchSeriesGames(seriesId),
+				fetchSeriesPlayers(seriesId)
 			]);
 
 			if (!seriesRes.ok) throw new Error('Failed to fetch series');
 			if (!gamesRes.ok) throw new Error('Failed to fetch games');
+			if (!playersRes.ok) throw new Error('Failed to fetch players');
 
 			series = await seriesRes.json();
 			games = await gamesRes.json();
+			seriesPlayers = await playersRes.json();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unknown error';
 		} finally {
 			loading = false;
+		}
+	}
+
+	// Handle player hover - fetch cheatsheet on demand
+	async function handlePlayerHover(playerId: string | null) {
+		if (!playerId) {
+			loadingCheatsheet = null;
+			return;
+		}
+
+		// Already cached?
+		if (cheatsheets.has(playerId)) {
+			return;
+		}
+
+		// Fetch cheatsheet
+		loadingCheatsheet = playerId;
+		try {
+			const res = await fetchPlayerCheatsheet(playerId);
+			if (res.ok) {
+				const data = await res.json();
+				cheatsheets = new Map(cheatsheets).set(playerId, data.cheatsheet);
+			}
+		} catch (e) {
+			console.error('Failed to fetch cheatsheet:', e);
+		} finally {
+			if (loadingCheatsheet === playerId) {
+				loadingCheatsheet = null;
+			}
 		}
 	}
 
@@ -184,84 +226,6 @@
 
 		<div class="layout">
 			<aside class="sidebar">
-				<!-- Progress Card -->
-				<div class="sidebar-card">
-					<div class="card-header">
-						<span class="card-icon">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<circle cx="12" cy="12" r="10"/>
-								<path d="M12 6v6l4 2"/>
-							</svg>
-						</span>
-						<h3>Progress</h3>
-					</div>
-					<div class="card-content">
-						{#if $seriesProgress}
-							<div class="progress-display">
-								<div class="progress-numbers">
-									<span class="current">{$seriesProgress.game_number}</span>
-									<span class="separator">/</span>
-									<span class="total">{$seriesProgress.total_games}</span>
-								</div>
-								<div class="progress-bar">
-									<div
-										class="progress-fill"
-										style="width: {($seriesProgress.game_number / $seriesProgress.total_games) * 100}%"
-									></div>
-								</div>
-								<span class="progress-label">Games Played</span>
-							</div>
-						{:else}
-							<div class="progress-display">
-								<div class="progress-numbers">
-									<span class="current">{series.current_game_number}</span>
-									<span class="separator">/</span>
-									<span class="total">{series.total_games}</span>
-								</div>
-								<div class="progress-bar">
-									<div
-										class="progress-fill"
-										style="width: {(series.current_game_number / series.total_games) * 100}%"
-									></div>
-								</div>
-								<span class="progress-label">Games Played</span>
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Current Game Card -->
-				{#if $snapshot}
-					<div class="sidebar-card game-card">
-						<div class="card-header">
-							<span class="card-icon">
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<path d="M12 2L2 7l10 5 10-5-10-5z"/>
-									<path d="M2 17l10 5 10-5"/>
-									<path d="M2 12l10 5 10-5"/>
-								</svg>
-							</span>
-							<h3>Current Game</h3>
-						</div>
-						<div class="card-content">
-							<div class="game-stats">
-								<div class="game-stat">
-									<span class="stat-label">Phase</span>
-									<span class="badge {$snapshot.phase}">{$snapshot.phase}</span>
-								</div>
-								<div class="game-stat">
-									<span class="stat-label">Day</span>
-									<span class="stat-value">{$snapshot.day_number}</span>
-								</div>
-								<div class="game-stat">
-									<span class="stat-label">Alive</span>
-									<span class="stat-value alive">{$snapshot.alive_player_ids.length}</span>
-								</div>
-							</div>
-						</div>
-					</div>
-				{/if}
-
 				<!-- Players Card -->
 				<div class="sidebar-card">
 					<div class="card-header">
@@ -336,20 +300,40 @@
 			</aside>
 
 			<div class="main-content noir-theme">
-				{#if $snapshot}
-					<div class="phase-row">
-						<PhaseIndicator phase={$snapshot.phase} dayNumber={$snapshot.day_number} />
+				<div class="table-wrapper">
+					<!-- Top-left: Progress -->
+					<div class="table-overlay top-left">
+						<span class="overlay-label">Game</span>
+						<span class="overlay-value">
+							{$seriesProgress?.game_number ?? series.current_game_number}/{$seriesProgress?.total_games ?? series.total_games}
+						</span>
 					</div>
-				{/if}
 
-				<RoundTable
-					players={enrichedPlayers}
-					currentSpeakerId={$currentSpeaker?.playerId || null}
-					speechContent={$currentSpeaker?.content || null}
-					speakerName={$currentSpeaker?.playerName || null}
-					votes={$currentVotes}
-					showRoles={true}
-				/>
+					<!-- Top-right: Phase indicator -->
+					{#if $snapshot}
+						<div class="table-overlay top-right">
+							<PhaseIndicator phase={$snapshot.phase} dayNumber={$snapshot.day_number} />
+						</div>
+
+						<!-- Bottom-right: Alive count -->
+						<div class="table-overlay bottom-right">
+							<span class="overlay-label">Alive</span>
+							<span class="overlay-value alive">{$snapshot.alive_player_ids.length}</span>
+						</div>
+					{/if}
+
+					<RoundTable
+						players={enrichedPlayers}
+						currentSpeakerId={$currentSpeaker?.playerId || null}
+						speechContent={$currentSpeaker?.content || null}
+						speakerName={$currentSpeaker?.playerName || null}
+						votes={$currentVotes}
+						showRoles={true}
+						{cheatsheets}
+						{loadingCheatsheet}
+						onPlayerHover={handlePlayerHover}
+					/>
+				</div>
 
 				<ChatLog events={$events} />
 			</div>
@@ -584,8 +568,8 @@
 	.card-header {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 1rem 1.25rem;
+		gap: 0.5rem;
+		padding: 0.5rem 0.75rem;
 		background: rgba(0, 0, 0, 0.2);
 		border-bottom: 1px solid var(--border);
 	}
@@ -594,113 +578,27 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 24px;
-		height: 24px;
+		width: 18px;
+		height: 18px;
 		color: var(--accent-dim);
 	}
 
 	.card-icon svg {
-		width: 18px;
-		height: 18px;
+		width: 14px;
+		height: 14px;
 	}
 
 	.card-header h3 {
 		font-family: var(--font-heading);
-		font-size: 0.8rem;
+		font-size: 0.7rem;
 		font-weight: 400;
-		letter-spacing: 0.15em;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--text-secondary);
 	}
 
 	.card-content {
-		padding: 1.25rem;
-	}
-
-	/* Progress Display */
-	.progress-display {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		align-items: center;
-		text-align: center;
-	}
-
-	.progress-numbers {
-		display: flex;
-		align-items: baseline;
-		gap: 0.25rem;
-	}
-
-	.progress-numbers .current {
-		font-family: var(--font-display);
-		font-size: 2.5rem;
-		font-weight: 600;
-		color: var(--accent);
-	}
-
-	.progress-numbers .separator {
-		font-family: var(--font-body);
-		font-size: 1.5rem;
-		color: var(--text-muted);
-	}
-
-	.progress-numbers .total {
-		font-family: var(--font-display);
-		font-size: 1.5rem;
-		color: var(--text-secondary);
-	}
-
-	.progress-bar {
-		width: 100%;
-		height: 6px;
-		background: var(--bg-primary);
-		border-radius: 3px;
-		overflow: hidden;
-	}
-
-	.progress-fill {
-		height: 100%;
-		background: linear-gradient(90deg, var(--accent-dim), var(--accent));
-		border-radius: 3px;
-		transition: width 0.5s ease;
-	}
-
-	.progress-label {
-		font-family: var(--font-body);
-		font-size: 0.85rem;
-		color: var(--text-muted);
-		font-style: italic;
-	}
-
-	/* Game Stats */
-	.game-stats {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.game-stat {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-
-	.game-stat .stat-label {
-		font-family: var(--font-body);
-		font-size: 0.95rem;
-		color: var(--text-secondary);
-	}
-
-	.game-stat .stat-value {
-		font-family: var(--font-display);
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--text-cream);
-	}
-
-	.game-stat .stat-value.alive {
-		color: var(--success);
+		padding: 0.75rem 1rem;
 	}
 
 	/* Players List */
@@ -851,10 +749,60 @@
 		position: relative;
 	}
 
-	.phase-row {
+	.table-wrapper {
+		position: relative;
+		flex-shrink: 0;
+	}
+
+	.table-overlay {
+		position: absolute;
+		z-index: 200;
 		display: flex;
-		justify-content: center;
-		padding: 0.5rem 0;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.15rem;
+		padding: 0.4rem 0.6rem;
+		background: rgba(20, 20, 18, 0.9);
+		border: 1px solid var(--border-gold);
+		border-radius: 4px;
+		backdrop-filter: blur(4px);
+	}
+
+	.table-overlay.top-left {
+		top: 0.5rem;
+		left: 0.5rem;
+	}
+
+	.table-overlay.top-right {
+		top: 0.5rem;
+		right: 0.5rem;
+		padding: 0;
+		background: transparent;
+		border: none;
+	}
+
+	.table-overlay.bottom-right {
+		bottom: 0.5rem;
+		right: 0.5rem;
+	}
+
+	.overlay-label {
+		font-family: var(--font-heading);
+		font-size: 0.6rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--text-muted);
+	}
+
+	.overlay-value {
+		font-family: var(--font-display);
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--accent);
+	}
+
+	.overlay-value.alive {
+		color: var(--success);
 	}
 
 	/* ============================================

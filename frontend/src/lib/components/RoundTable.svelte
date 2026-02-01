@@ -2,12 +2,14 @@
   import PlayerSeat from './PlayerSeat.svelte';
   import SpeechBubble from './SpeechBubble.svelte';
   import VoteArrow from './VoteArrow.svelte';
+  import type { Cheatsheet } from '$lib/types';
 
   interface Player {
     id: string;
     name: string;
     role?: string;
     is_alive: boolean;
+    playerId?: string; // UUID from backend
   }
 
   interface Props {
@@ -17,6 +19,9 @@
     speakerName: string | null;
     votes: Map<string, string>; // voterId -> targetId
     showRoles?: boolean;
+    cheatsheets?: Map<string, Cheatsheet>; // playerId -> cheatsheet
+    loadingCheatsheet?: string | null; // playerId currently loading
+    onPlayerHover?: (playerId: string | null) => void;
   }
 
   let {
@@ -25,7 +30,10 @@
     speechContent,
     speakerName,
     votes,
-    showRoles = false
+    showRoles = false,
+    cheatsheets = new Map(),
+    loadingCheatsheet = null,
+    onPlayerHover
   }: Props = $props();
 
   // Calculate circular positions for players
@@ -65,10 +73,15 @@
     {#each players as player, index}
       <PlayerSeat
         name={player.name}
+        playerId={player.playerId}
         role={showRoles && player.role ? player.role : 'townsperson'}
         isAlive={player.is_alive}
         isSpeaking={player.id === currentSpeakerId}
         position={positions[index]}
+        tableCenter={{ x: centerX, y: centerY }}
+        cheatsheet={player.playerId ? cheatsheets.get(player.playerId) : null}
+        cheatsheetLoading={loadingCheatsheet === player.playerId}
+        onHover={onPlayerHover}
       />
     {/each}
 

@@ -80,11 +80,10 @@
 </div>
 
 <style>
-	/* Chat Log Section - Compact Bottom Panel */
+	/* Chat Log Section - Expanded Panel */
 	.chat-log-section {
-		height: 150px;
-		max-height: 150px;
-		min-height: 150px;
+		flex: 1;
+		min-height: 250px;
 		background: linear-gradient(180deg, var(--noir-dark, #1a1917) 0%, var(--noir-charcoal, #141412) 100%);
 		border-radius: 4px;
 		border: 1px solid var(--border-gold, #8b7355);
