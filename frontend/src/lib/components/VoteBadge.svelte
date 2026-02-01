@@ -1,0 +1,91 @@
+<script lang="ts">
+  interface Props {
+    voterName: string;
+    voterRole: string;
+    index: number;
+    scaleFactor: number;
+  }
+
+  let { voterName, voterRole, index, scaleFactor }: Props = $props();
+
+  const roleEmoji: Record<string, string> = {
+    mafia: '🔪',
+    doctor: '💊',
+    deputy: '🔍',
+    townsperson: '👤'
+  };
+
+  const emoji = $derived(roleEmoji[voterRole] || '👤');
+</script>
+
+<div
+  class="vote-badge {voterRole}"
+  style="--index: {index}; --scale: {scaleFactor};"
+  title={voterName}
+>
+  <span class="badge-emoji">{emoji}</span>
+</div>
+
+<style>
+  .vote-badge {
+    width: calc(28px * var(--scale, 1));
+    height: calc(28px * var(--scale, 1));
+    border-radius: 50%;
+    background: #141412;
+    border: 2px solid #a68829;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(0.75rem * var(--scale, 1));
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    animation: badgeAppear 0.4s ease-out backwards;
+    animation-delay: calc(var(--index, 0) * 0.08s);
+    cursor: default;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .vote-badge:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+  }
+
+  .vote-badge.mafia {
+    border-color: #c41e3a;
+    box-shadow: 0 2px 6px rgba(196, 30, 58, 0.4);
+  }
+
+  .vote-badge.doctor {
+    border-color: #228b22;
+    box-shadow: 0 2px 6px rgba(34, 139, 34, 0.4);
+  }
+
+  .vote-badge.deputy {
+    border-color: #6b3fa0;
+    box-shadow: 0 2px 6px rgba(107, 63, 160, 0.4);
+  }
+
+  .vote-badge.villager,
+  .vote-badge.townsperson {
+    border-color: #b8860b;
+    box-shadow: 0 2px 6px rgba(184, 134, 11, 0.4);
+  }
+
+  .badge-emoji {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  }
+
+  @keyframes badgeAppear {
+    0% {
+      opacity: 0;
+      transform: scale(0.3) translateY(8px);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.1) translateY(-2px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+</style>

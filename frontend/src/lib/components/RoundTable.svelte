@@ -152,7 +152,6 @@
         <VoteBadgeCluster
           {voters}
           targetPosition={targetPos}
-          tableCenter={{ x: centerX, y: centerY }}
           {scaleFactor}
         />
       {/if}
