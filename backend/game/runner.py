@@ -1,40 +1,37 @@
 """Game runner - executes a single Mafia game."""
+
 import random
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 import weave
 
-from db.database import get_db_session
 from db import crud
-from db.models import GamePlayer
-from game.llm import llm_client, LLMError
-from game.tts import tts_client
+from db.database import get_db_session
+from game.llm import LLMError, llm_client
 from game.prompts import (
+    DEPUTY_INVESTIGATE_SYSTEM_PROMPT,
+    DOCTOR_SAVE_SYSTEM_PROMPT,
     GAME_CONTEXT_TEMPLATE,
+    MAFIA_KILL_SYSTEM_PROMPT,
     ROLE_INFO,
     SPEECH_SYSTEM_PROMPT,
     VOTE_SYSTEM_PROMPT,
-    MAFIA_KILL_SYSTEM_PROMPT,
-    DOCTOR_SAVE_SYSTEM_PROMPT,
-    DEPUTY_INVESTIGATE_SYSTEM_PROMPT,
 )
+from game.tts import tts_client
 from models.schemas import (
-    GameEvent,
-    EventType,
-    Visibility,
-    GamePhase,
-    Winner,
-    Role,
+    ActorNightChoice,
     ActorSpeech,
     ActorVote,
-    ActorNightChoice,
-    ModelProvider,
     Cheatsheet,
+    EventType,
+    GameEvent,
+    GamePhase,
+    ModelProvider,
+    Visibility,
+    Winner,
 )
 from websocket.manager import ws_manager
-
 
 # Role distribution per player count
 ROLE_DISTRIBUTION = {
@@ -47,7 +44,7 @@ ROLE_DISTRIBUTION = {
 class GameRunner:
     """Runs a single game of Mafia."""
 
-    def __init__(self, game_id: str, series_id: str, random_seed: Optional[int] = None):
+    def __init__(self, game_id: str, series_id: str, random_seed: int | None = None):
         self.game_id = game_id
         self.series_id = series_id
         self.random = random.Random(random_seed)
@@ -59,9 +56,9 @@ class GameRunner:
         self,
         event_type: EventType,
         visibility: Visibility,
-        actor_id: Optional[str] = None,
-        target_id: Optional[str] = None,
-        payload: Optional[dict] = None,
+        actor_id: str | None = None,
+        target_id: str | None = None,
+        payload: dict | None = None,
     ) -> GameEvent:
         """Create, persist, and broadcast a game event."""
         event = GameEvent(
@@ -96,18 +93,21 @@ class GameRunner:
                 )
                 if cheatsheet and cheatsheet.items:
                     from models.schemas import CheatsheetItem
+
                     cs_schema.items = [CheatsheetItem.model_validate(i) for i in cheatsheet.items]
 
-                self._game_players.append({
-                    "game_player_id": gp.id,
-                    "player_id": gp.player.id,
-                    "name": gp.player.name,
-                    "role": gp.role,
-                    "is_alive": gp.is_alive,
-                    "model_provider": ModelProvider(gp.player.model_provider),
-                    "model_name": gp.player.model_name,
-                    "cheatsheet": cs_schema,
-                })
+                self._game_players.append(
+                    {
+                        "game_player_id": gp.id,
+                        "player_id": gp.player.id,
+                        "name": gp.player.name,
+                        "role": gp.role,
+                        "is_alive": gp.is_alive,
+                        "model_provider": ModelProvider(gp.player.model_provider),
+                        "model_name": gp.player.model_name,
+                        "cheatsheet": cs_schema,
+                    }
+                )
         return self._game_players
 
     def _get_alive_players(self) -> list[dict]:
@@ -123,13 +123,13 @@ class GameRunner:
             for p in self._game_players
         ]
 
-    def _get_player_by_name(self, name: str) -> Optional[dict]:
+    def _get_player_by_name(self, name: str) -> dict | None:
         for p in self._game_players:
             if p["name"].lower() == name.lower():
                 return p
         return None
 
-    def _get_player_by_id(self, player_id: str) -> Optional[dict]:
+    def _get_player_by_id(self, player_id: str) -> dict | None:
         for p in self._game_players:
             if p["player_id"] == player_id:
                 return p
@@ -142,9 +142,14 @@ class GameRunner:
 
         role_info = ROLE_INFO.get(player["role"], "")
         if player["role"] == "mafia":
-            partners = [p["name"] for p in self._game_players
-                       if p["role"] == "mafia" and p["player_id"] != player["player_id"]]
-            role_info = role_info.format(mafia_partners=", ".join(partners) if partners else "none (you're alone)")
+            partners = [
+                p["name"]
+                for p in self._game_players
+                if p["role"] == "mafia" and p["player_id"] != player["player_id"]
+            ]
+            role_info = role_info.format(
+                mafia_partners=", ".join(partners) if partners else "none (you're alone)"
+            )
 
         return GAME_CONTEXT_TEMPLATE.format(
             num_players=len(self._game_players),
@@ -155,10 +160,12 @@ class GameRunner:
             role=player["role"],
             role_info=role_info,
             cheatsheet=player["cheatsheet"].to_prompt_format(),
-            discussion="\n".join(self._day_discussion) if self._day_discussion else "(No discussion yet)",
+            discussion="\n".join(self._day_discussion)
+            if self._day_discussion
+            else "(No discussion yet)",
         )
 
-    def _check_win_condition(self) -> Optional[Winner]:
+    def _check_win_condition(self) -> Winner | None:
         """Check if the game has ended."""
         alive = self._get_alive_players()
         mafia_count = sum(1 for p in alive if p["role"] == "mafia")
@@ -177,7 +184,9 @@ class GameRunner:
 
         # Start game
         async with get_db_session() as db:
-            await crud.update_game(db, self.game_id, status=GamePhase.DAY, started_at=datetime.utcnow())
+            await crud.update_game(
+                db, self.game_id, status=GamePhase.DAY, started_at=datetime.utcnow()
+            )
 
         await self._emit_event(
             EventType.GAME_STARTED,
@@ -202,7 +211,8 @@ class GameRunner:
         # End game
         async with get_db_session() as db:
             await crud.update_game(
-                db, self.game_id,
+                db,
+                self.game_id,
                 status=GamePhase.COMPLETED,
                 winner=winner.value,
                 completed_at=datetime.utcnow(),
@@ -216,10 +226,12 @@ class GameRunner:
 
         return winner
 
-    async def _run_day_phase(self) -> Optional[Winner]:
+    async def _run_day_phase(self) -> Winner | None:
         """Run the day phase: speeches, voting, and lynch."""
         async with get_db_session() as db:
-            await crud.update_game(db, self.game_id, status=GamePhase.DAY, day_number=self._day_number)
+            await crud.update_game(
+                db, self.game_id, status=GamePhase.DAY, day_number=self._day_number
+            )
 
         await self._emit_event(
             EventType.DAY_STARTED,
@@ -259,7 +271,7 @@ class GameRunner:
             votes[player["player_id"]] = vote
 
         # Resolve lynch
-        lynched_player = await self._resolve_lynch(votes)
+        await self._resolve_lynch(votes)
 
         # Check win condition
         return self._check_win_condition()
@@ -313,7 +325,9 @@ class GameRunner:
             game_context=context,
         )
 
-        alive_names = [p["name"] for p in self._get_alive_players() if p["player_id"] != player["player_id"]]
+        alive_names = [
+            p["name"] for p in self._get_alive_players() if p["player_id"] != player["player_id"]
+        ]
 
         try:
             vote_result = await llm_client.complete_json(
@@ -329,7 +343,11 @@ class GameRunner:
             # Validate vote
             if vote != "no_lynch":
                 target = self._get_player_by_name(vote)
-                if not target or not target["is_alive"] or target["player_id"] == player["player_id"]:
+                if (
+                    not target
+                    or not target["is_alive"]
+                    or target["player_id"] == player["player_id"]
+                ):
                     vote = self.random.choice(alive_names + ["no_lynch"])
         except LLMError as e:
             print(f"LLM ERROR (_player_vote) for {player['name']}: {e}")
@@ -358,11 +376,11 @@ class GameRunner:
 
         return vote
 
-    async def _resolve_lynch(self, votes: dict[str, str]) -> Optional[dict]:
+    async def _resolve_lynch(self, votes: dict[str, str]) -> dict | None:
         """Resolve voting and potentially lynch a player."""
         # Count votes
         vote_counts: dict[str, int] = {}
-        for voter_id, vote in votes.items():
+        for _voter_id, vote in votes.items():
             vote_counts[vote] = vote_counts.get(vote, 0) + 1
 
         # Find plurality
@@ -379,7 +397,8 @@ class GameRunner:
 
                 async with get_db_session() as db:
                     await crud.update_game_player(
-                        db, target["game_player_id"],
+                        db,
+                        target["game_player_id"],
                         is_alive=False,
                         eliminated_day=self._day_number,
                         elimination_type="lynched",
@@ -412,7 +431,7 @@ class GameRunner:
 
         return lynched_player
 
-    async def _run_night_phase(self) -> Optional[Winner]:
+    async def _run_night_phase(self) -> Winner | None:
         """Run the night phase: mafia kill, doctor save, deputy investigate."""
         async with get_db_session() as db:
             await crud.update_game(db, self.game_id, status=GamePhase.NIGHT)
@@ -434,10 +453,10 @@ class GameRunner:
             self._get_players_for_snapshot(),
         )
 
-        # Get night actions
+        # Get night actions (all create events as side effects)
         mafia_target = await self._mafia_kill_choice()
         doctor_target = await self._doctor_save_choice()
-        deputy_target = await self._deputy_investigate_choice()
+        await self._deputy_investigate_choice()  # Creates investigate event
 
         # Resolve night
         killed_player = None
@@ -449,7 +468,8 @@ class GameRunner:
 
                 async with get_db_session() as db:
                     await crud.update_game_player(
-                        db, target["game_player_id"],
+                        db,
+                        target["game_player_id"],
                         is_alive=False,
                         eliminated_day=self._day_number,
                         elimination_type="killed",
@@ -482,7 +502,7 @@ class GameRunner:
         return self._check_win_condition()
 
     @weave.op()
-    async def _mafia_kill_choice(self) -> Optional[str]:
+    async def _mafia_kill_choice(self) -> str | None:
         """Get mafia's kill target."""
         mafia_players = [p for p in self._get_alive_players() if p["role"] == "mafia"]
         if not mafia_players:
@@ -530,7 +550,7 @@ class GameRunner:
         return target
 
     @weave.op()
-    async def _doctor_save_choice(self) -> Optional[str]:
+    async def _doctor_save_choice(self) -> str | None:
         """Get doctor's save target."""
         doctors = [p for p in self._get_alive_players() if p["role"] == "doctor"]
         if not doctors:
@@ -575,7 +595,7 @@ class GameRunner:
         return target
 
     @weave.op()
-    async def _deputy_investigate_choice(self) -> Optional[str]:
+    async def _deputy_investigate_choice(self) -> str | None:
         """Get deputy's investigation target and reveal result."""
         deputies = [p for p in self._get_alive_players() if p["role"] == "deputy"]
         if not deputies:
@@ -588,7 +608,9 @@ class GameRunner:
             game_context=context,
         )
 
-        valid_targets = [p["name"] for p in self._get_alive_players() if p["player_id"] != player["player_id"]]
+        valid_targets = [
+            p["name"] for p in self._get_alive_players() if p["player_id"] != player["player_id"]
+        ]
 
         try:
             result = await llm_client.complete_json(
@@ -630,8 +652,8 @@ class GameRunner:
 async def assign_roles(
     game_id: str,
     player_ids: list[str],
-    fixed_roles: Optional[dict[str, str]] = None,
-    random_seed: Optional[int] = None,
+    fixed_roles: dict[str, str] | None = None,
+    random_seed: int | None = None,
 ) -> None:
     """Assign roles to players for a game. Respects fixed_roles if provided."""
     rng = random.Random(random_seed)
@@ -644,7 +666,7 @@ async def assign_roles(
     fixed_roles = fixed_roles or {}
 
     # Validate and subtract fixed roles from distribution
-    for player_id, role in fixed_roles.items():
+    for _player_id, role in fixed_roles.items():
         if distribution.get(role, 0) <= 0:
             raise ValueError(f"Cannot assign fixed role '{role}': exceeds distribution limit")
         distribution[role] -= 1

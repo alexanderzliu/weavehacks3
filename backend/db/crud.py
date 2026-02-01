@@ -1,29 +1,29 @@
 """CRUD operations for database models."""
+
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from db.models import Series, Player, Game, GamePlayer, Cheatsheet, GameEvent
+from db.models import Cheatsheet, Game, GameEvent, GamePlayer, Player, Series
 from models.schemas import (
-    SeriesConfig,
-    PlayerConfig,
     GameEvent as GameEventSchema,
-    Cheatsheet as CheatsheetSchema,
-    SeriesStatus,
+)
+from models.schemas import (
     GamePhase,
+    SeriesConfig,
+    SeriesStatus,
 )
 
-
 # ============ Series CRUD ============
+
 
 async def create_series(
     db: AsyncSession,
     config: SeriesConfig,
-    random_seed: Optional[int] = None,
+    random_seed: int | None = None,
 ) -> Series:
     """Create a new series with players and initial cheatsheets."""
     series_id = str(uuid4())
@@ -69,17 +69,15 @@ async def create_series(
     return series
 
 
-async def get_series(db: AsyncSession, series_id: str) -> Optional[Series]:
+async def get_series(db: AsyncSession, series_id: str) -> Series | None:
     """Get series by ID with players loaded."""
     result = await db.execute(
-        select(Series)
-        .options(selectinload(Series.players))
-        .where(Series.id == series_id)
+        select(Series).options(selectinload(Series.players)).where(Series.id == series_id)
     )
     return result.scalar_one_or_none()
 
 
-async def get_series_with_games(db: AsyncSession, series_id: str) -> Optional[Series]:
+async def get_series_with_games(db: AsyncSession, series_id: str) -> Series | None:
     """Get series by ID with players and games loaded."""
     result = await db.execute(
         select(Series)
@@ -93,16 +91,14 @@ async def update_series_status(
     db: AsyncSession,
     series_id: str,
     status: SeriesStatus,
-    current_game_number: Optional[int] = None,
+    current_game_number: int | None = None,
 ) -> None:
     """Update series status and optionally current game number."""
     values = {"status": status.value, "updated_at": datetime.utcnow()}
     if current_game_number is not None:
         values["current_game_number"] = current_game_number
 
-    await db.execute(
-        update(Series).where(Series.id == series_id).values(**values)
-    )
+    await db.execute(update(Series).where(Series.id == series_id).values(**values))
 
 
 async def list_series(db: AsyncSession, limit: int = 50) -> list[Series]:
@@ -118,15 +114,14 @@ async def list_series(db: AsyncSession, limit: int = 50) -> list[Series]:
 
 # ============ Player CRUD ============
 
+
 async def get_players_for_series(db: AsyncSession, series_id: str) -> list[Player]:
     """Get all players for a series."""
-    result = await db.execute(
-        select(Player).where(Player.series_id == series_id)
-    )
+    result = await db.execute(select(Player).where(Player.series_id == series_id))
     return list(result.scalars().all())
 
 
-async def get_player(db: AsyncSession, player_id: str) -> Optional[Player]:
+async def get_player(db: AsyncSession, player_id: str) -> Player | None:
     """Get player by ID."""
     result = await db.execute(select(Player).where(Player.id == player_id))
     return result.scalar_one_or_none()
@@ -134,11 +129,12 @@ async def get_player(db: AsyncSession, player_id: str) -> Optional[Player]:
 
 # ============ Game CRUD ============
 
+
 async def create_game(
     db: AsyncSession,
     series_id: str,
     game_number: int,
-    random_seed: Optional[int] = None,
+    random_seed: int | None = None,
 ) -> Game:
     """Create a new game."""
     game = Game(
@@ -153,7 +149,7 @@ async def create_game(
     return game
 
 
-async def get_game(db: AsyncSession, game_id: str) -> Optional[Game]:
+async def get_game(db: AsyncSession, game_id: str) -> Game | None:
     """Get game by ID with game_players loaded."""
     result = await db.execute(
         select(Game)
@@ -166,11 +162,11 @@ async def get_game(db: AsyncSession, game_id: str) -> Optional[Game]:
 async def update_game(
     db: AsyncSession,
     game_id: str,
-    status: Optional[GamePhase] = None,
-    winner: Optional[str] = None,
-    day_number: Optional[int] = None,
-    started_at: Optional[datetime] = None,
-    completed_at: Optional[datetime] = None,
+    status: GamePhase | None = None,
+    winner: str | None = None,
+    day_number: int | None = None,
+    started_at: datetime | None = None,
+    completed_at: datetime | None = None,
 ) -> None:
     """Update game fields."""
     values = {}
@@ -192,14 +188,12 @@ async def update_game(
 async def get_games_for_series(db: AsyncSession, series_id: str) -> list[Game]:
     """Get all games for a series."""
     result = await db.execute(
-        select(Game)
-        .where(Game.series_id == series_id)
-        .order_by(Game.game_number)
+        select(Game).where(Game.series_id == series_id).order_by(Game.game_number)
     )
     return list(result.scalars().all())
 
 
-async def get_active_game_for_series(db: AsyncSession, series_id: str) -> Optional[Game]:
+async def get_active_game_for_series(db: AsyncSession, series_id: str) -> Game | None:
     """Get the currently active (non-completed) game for a series."""
     result = await db.execute(
         select(Game)
@@ -212,6 +206,7 @@ async def get_active_game_for_series(db: AsyncSession, series_id: str) -> Option
 
 
 # ============ GamePlayer CRUD ============
+
 
 async def create_game_player(
     db: AsyncSession,
@@ -245,9 +240,9 @@ async def get_game_players(db: AsyncSession, game_id: str) -> list[GamePlayer]:
 async def update_game_player(
     db: AsyncSession,
     game_player_id: str,
-    is_alive: Optional[bool] = None,
-    eliminated_day: Optional[int] = None,
-    elimination_type: Optional[str] = None,
+    is_alive: bool | None = None,
+    eliminated_day: int | None = None,
+    elimination_type: str | None = None,
 ) -> None:
     """Update game player state."""
     values = {}
@@ -259,14 +254,13 @@ async def update_game_player(
         values["elimination_type"] = elimination_type
 
     if values:
-        await db.execute(
-            update(GamePlayer).where(GamePlayer.id == game_player_id).values(**values)
-        )
+        await db.execute(update(GamePlayer).where(GamePlayer.id == game_player_id).values(**values))
 
 
 # ============ Cheatsheet CRUD ============
 
-async def get_latest_cheatsheet(db: AsyncSession, player_id: str) -> Optional[Cheatsheet]:
+
+async def get_latest_cheatsheet(db: AsyncSession, player_id: str) -> Cheatsheet | None:
     """Get the most recent cheatsheet version for a player."""
     result = await db.execute(
         select(Cheatsheet)
@@ -303,9 +297,7 @@ async def create_cheatsheet_version(
 async def get_cheatsheet_history(db: AsyncSession, player_id: str) -> list[Cheatsheet]:
     """Get all cheatsheet versions for a player."""
     result = await db.execute(
-        select(Cheatsheet)
-        .where(Cheatsheet.player_id == player_id)
-        .order_by(Cheatsheet.version)
+        select(Cheatsheet).where(Cheatsheet.player_id == player_id).order_by(Cheatsheet.version)
     )
     return list(result.scalars().all())
 
@@ -314,7 +306,7 @@ async def get_cheatsheet_at_game(
     db: AsyncSession,
     player_id: str,
     game_number: int,
-) -> Optional[Cheatsheet]:
+) -> Cheatsheet | None:
     """Get the cheatsheet that was in effect during a specific game.
 
     During Game N, the player uses the cheatsheet with the highest version
@@ -339,6 +331,7 @@ async def get_cheatsheet_at_game(
 
 # ============ GameEvent CRUD ============
 
+
 async def create_game_event(db: AsyncSession, event: GameEventSchema) -> GameEvent:
     """Create a game event."""
     db_event = GameEvent(
@@ -360,7 +353,7 @@ async def create_game_event(db: AsyncSession, event: GameEventSchema) -> GameEve
 async def get_game_events(
     db: AsyncSession,
     game_id: str,
-    visibility_filter: Optional[list[str]] = None,
+    visibility_filter: list[str] | None = None,
 ) -> list[GameEvent]:
     """Get events for a game, optionally filtered by visibility."""
     query = select(GameEvent).where(GameEvent.game_id == game_id)
@@ -385,13 +378,17 @@ async def get_events_for_player(
     if player_role == "mafia":
         visible.append("mafia")
 
-    query = select(GameEvent).where(
-        GameEvent.game_id == game_id,
-        (
-            GameEvent.visibility.in_(visible) |
-            ((GameEvent.visibility == "private") & (GameEvent.actor_player_id == player_id))
+    query = (
+        select(GameEvent)
+        .where(
+            GameEvent.game_id == game_id,
+            (
+                GameEvent.visibility.in_(visible)
+                | ((GameEvent.visibility == "private") & (GameEvent.actor_player_id == player_id))
+            ),
         )
-    ).order_by(GameEvent.ts)
+        .order_by(GameEvent.ts)
+    )
 
     result = await db.execute(query)
     return list(result.scalars().all())

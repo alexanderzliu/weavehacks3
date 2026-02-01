@@ -1,23 +1,22 @@
 """Series orchestrator - runs N games with reflection between each."""
+
 import asyncio
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 import weave
 from weave.trace.weave_client import Call
 
-from db.database import get_db_session
 from db import crud
-from game.runner import GameRunner, assign_roles
+from db.database import get_db_session
 from game.reflection import ReflectionPipeline
+from game.runner import GameRunner, assign_roles
 from models.schemas import (
-    SeriesStatus,
-    GamePhase,
-    GameEvent,
     EventType,
-    Visibility,
+    GameEvent,
     ModelProvider,
+    SeriesStatus,
+    Visibility,
 )
 from websocket.manager import ws_manager
 
@@ -62,7 +61,8 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
             # Update current game number
             async with get_db_session() as db:
                 await crud.update_series_status(
-                    db, series_id,
+                    db,
+                    series_id,
                     SeriesStatus.IN_PROGRESS,
                     current_game_number=game_number,
                 )

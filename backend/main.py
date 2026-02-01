@@ -4,13 +4,17 @@ from pathlib import Path
 # === DEBUG: Understanding the environment ===
 print(f"[DEBUG] Current working directory: {os.getcwd()}")
 print(f"[DEBUG] .env exists in cwd: {Path('.env').exists()}")
-print(f"[DEBUG] WANDB_API_KEY in os.environ before settings: {os.environ.get('WANDB_API_KEY', '(not set)')[:20]}...")
+print(
+    f"[DEBUG] WANDB_API_KEY in os.environ before settings: {os.environ.get('WANDB_API_KEY', '(not set)')[:20]}..."
+)
 
 from config import get_settings
 
 settings = get_settings()
 
-print(f"[DEBUG] settings.WANDB_API_KEY: {settings.WANDB_API_KEY[:20] if settings.WANDB_API_KEY else '(empty)'}...")
+print(
+    f"[DEBUG] settings.WANDB_API_KEY: {settings.WANDB_API_KEY[:20] if settings.WANDB_API_KEY else '(empty)'}..."
+)
 print(f"[DEBUG] settings.WEAVE_ENTITY: {settings.WEAVE_ENTITY}")
 print(f"[DEBUG] settings.WEAVE_PROJECT: {settings.WEAVE_PROJECT}")
 
@@ -21,13 +25,14 @@ if settings.WANDB_API_KEY:
 else:
     print("[DEBUG] WARNING: settings.WANDB_API_KEY is empty, not setting env var")
 
-import weave
 from contextlib import asynccontextmanager
+
+import weave
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from db.database import init_db
 from api.routes import router as api_router
+from db.database import init_db
 from websocket.manager import router as ws_router
 
 
@@ -35,6 +40,23 @@ from websocket.manager import router as ws_router
 async def lifespan(app: FastAPI):
     # Startup
     await init_db()
+
+    # Check for AI provider configuration
+    from game.llm import get_available_providers
+
+    available = get_available_providers()
+    if not available:
+        print("\n" + "=" * 60)
+        print("WARNING: No AI provider API keys configured!")
+        print("Set at least one in backend/.env:")
+        print("  ANTHROPIC_API_KEY=sk-ant-...")
+        print("  OPENAI_API_KEY=sk-...")
+        print("  GOOGLE_API_KEY=...")
+        print("=" * 60 + "\n")
+    else:
+        providers_str = ", ".join(p.value for p in available)
+        print(f"AI providers available: {providers_str}")
+
     if settings.WANDB_API_KEY:
         try:
             weave_project = f"{settings.WEAVE_ENTITY}/{settings.WEAVE_PROJECT}"
@@ -68,7 +90,13 @@ app.include_router(ws_router)
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    from game.llm import get_available_providers
+
+    available = get_available_providers()
+    return {
+        "status": "healthy",
+        "providers": [p.value for p in available],
+    }
 
 
 if __name__ == "__main__":

@@ -1,26 +1,23 @@
 """Reflection pipeline - Reflector and Curator for cheatsheet evolution."""
-from typing import Optional
+
 from uuid import uuid4
 
 import weave
 
-from db.database import get_db_session
 from db import crud
-from game.llm import llm_client, LLMError
+from db.database import get_db_session
+from game.llm import LLMError, llm_client
 from models.schemas import (
-    ModelProvider,
     Cheatsheet,
     CheatsheetItem,
-    ReflectorOutput,
     CuratorOutput,
-    DeltaUpdate,
-    CuratorDecision,
-    GameEvent,
     EventType,
+    GameEvent,
+    ModelProvider,
+    ReflectorOutput,
     Visibility,
 )
 from websocket.manager import ws_manager
-
 
 REFLECTOR_SYSTEM_PROMPT = """You are analyzing a completed Mafia game for player {player_name}.
 Your job is to identify lessons learned and suggest updates to their strategy cheatsheet.
@@ -130,8 +127,8 @@ class ReflectionPipeline:
         self,
         event_type: EventType,
         visibility: Visibility,
-        actor_id: Optional[str] = None,
-        payload: Optional[dict] = None,
+        actor_id: str | None = None,
+        payload: dict | None = None,
     ) -> None:
         """Emit a reflection event."""
         event = GameEvent(
@@ -191,7 +188,7 @@ class ReflectionPipeline:
         winner: str,
         model_provider: ModelProvider,
         model_name: str,
-    ) -> Optional[Cheatsheet]:
+    ) -> Cheatsheet | None:
         """Run reflection pipeline for a single player."""
         await self._emit_event(
             EventType.REFLECTION_STARTED,
@@ -207,7 +204,9 @@ class ReflectionPipeline:
         current_cheatsheet = Cheatsheet(items=[], version=0)
         if cs_db:
             current_cheatsheet = Cheatsheet(
-                items=[CheatsheetItem.model_validate(i) for i in cs_db.items] if cs_db.items else [],
+                items=[CheatsheetItem.model_validate(i) for i in cs_db.items]
+                if cs_db.items
+                else [],
                 version=cs_db.version,
             )
 
@@ -215,7 +214,9 @@ class ReflectionPipeline:
         game_log = await self._get_game_log()
 
         # Determine outcome
-        player_won = (role == "mafia" and winner == "mafia") or (role != "mafia" and winner == "town")
+        player_won = (role == "mafia" and winner == "mafia") or (
+            role != "mafia" and winner == "town"
+        )
         outcome = "won" if player_won else "lost"
 
         # Run reflector

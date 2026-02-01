@@ -1,12 +1,13 @@
 """Unified LLM client with retry logic and structured output."""
+
 import asyncio
 import json
-from typing import Any, Optional, TypeVar, Type
-from pydantic import BaseModel
+from typing import TypeVar
 
 import anthropic
-import openai
 import google.generativeai as genai
+import openai
+from pydantic import BaseModel
 
 from config import get_settings
 from models.schemas import ModelProvider
@@ -18,25 +19,49 @@ T = TypeVar("T", bound=BaseModel)
 
 class LLMError(Exception):
     """Base exception for LLM errors."""
+
+    pass
+
+
+class LLMConfigError(LLMError):
+    """Missing or invalid API key configuration."""
+
     pass
 
 
 class LLMTimeoutError(LLMError):
     """Timeout during LLM call."""
+
     pass
 
 
 class LLMParseError(LLMError):
     """Failed to parse LLM response."""
+
     pass
+
+
+def get_available_providers() -> list[ModelProvider]:
+    """Return list of providers with configured API keys."""
+    available = []
+    if settings.ANTHROPIC_API_KEY:
+        available.append(ModelProvider.ANTHROPIC)
+    if settings.OPENAI_API_KEY:
+        available.append(ModelProvider.OPENAI)
+    if settings.GOOGLE_API_KEY:
+        available.append(ModelProvider.GOOGLE)
+    if settings.OPENAI_COMPATIBLE_BASE_URL and settings.OPENAI_COMPATIBLE_API_KEY:
+        available.append(ModelProvider.OPENAI_COMPATIBLE)
+    return available
 
 
 class LLMClient:
     """Unified client for multiple LLM providers."""
 
     def __init__(self):
-        self._anthropic: Optional[anthropic.AsyncAnthropic] = None
-        self._openai: Optional[openai.AsyncOpenAI] = None
+        self._anthropic: anthropic.AsyncAnthropic | None = None
+        self._openai: openai.AsyncOpenAI | None = None
+        self._openai_compatible: openai.AsyncOpenAI | None = None
         self._google_configured = False
 
     def _get_anthropic(self) -> anthropic.AsyncAnthropic:
@@ -49,6 +74,14 @@ class LLMClient:
             self._openai = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         return self._openai
 
+    def _get_openai_compatible(self) -> openai.AsyncOpenAI:
+        if self._openai_compatible is None:
+            self._openai_compatible = openai.AsyncOpenAI(
+                api_key=settings.OPENAI_COMPATIBLE_API_KEY,
+                base_url=settings.OPENAI_COMPATIBLE_BASE_URL,
+            )
+        return self._openai_compatible
+
     def _ensure_google(self) -> None:
         if not self._google_configured:
             genai.configure(api_key=settings.GOOGLE_API_KEY)
@@ -60,7 +93,7 @@ class LLMClient:
         model_name: str,
         system_prompt: str,
         user_prompt: str,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
     ) -> str:
         """Get a text completion from the specified provider."""
         timeout = timeout or settings.DEFAULT_TIMEOUT_SECONDS
@@ -81,10 +114,17 @@ class LLMClient:
                     self._google_complete(model_name, system_prompt, user_prompt),
                     timeout=timeout,
                 )
+            elif provider == ModelProvider.OPENAI_COMPATIBLE:
+                return await asyncio.wait_for(
+                    self._openai_chat_complete(
+                        self._get_openai_compatible(), model_name, system_prompt, user_prompt
+                    ),
+                    timeout=timeout,
+                )
             else:
                 raise LLMError(f"Unknown provider: {provider}")
-        except asyncio.TimeoutError:
-            raise LLMTimeoutError(f"LLM call timed out after {timeout}s")
+        except TimeoutError as e:
+            raise LLMTimeoutError(f"LLM call timed out after {timeout}s") from e
 
     async def _anthropic_complete(
         self,
@@ -101,13 +141,14 @@ class LLMClient:
         )
         return response.content[0].text
 
-    async def _openai_complete(
+    async def _openai_chat_complete(
         self,
+        client: openai.AsyncOpenAI,
         model_name: str,
         system_prompt: str,
         user_prompt: str,
     ) -> str:
-        client = self._get_openai()
+        """Shared completion logic for OpenAI and OpenAI-compatible endpoints."""
         response = await client.chat.completions.create(
             model=model_name,
             max_completion_tokens=2048,
@@ -116,7 +157,20 @@ class LLMClient:
                 {"role": "user", "content": user_prompt},
             ],
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if content is None:
+            raise LLMError("OpenAI-style endpoint returned empty response")
+        return content
+
+    async def _openai_complete(
+        self,
+        model_name: str,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        return await self._openai_chat_complete(
+            self._get_openai(), model_name, system_prompt, user_prompt
+        )
 
     async def _google_complete(
         self,
@@ -144,13 +198,13 @@ class LLMClient:
         model_name: str,
         system_prompt: str,
         user_prompt: str,
-        response_model: Type[T],
-        timeout: Optional[int] = None,
-        max_retries: Optional[int] = None,
+        response_model: type[T],
+        timeout: int | None = None,
+        max_retries: int | None = None,
     ) -> T:
         """Get a structured JSON response, with retry logic."""
         max_retries = max_retries if max_retries is not None else settings.LLM_MAX_RETRIES
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         # Add JSON instruction to system prompt
         json_system_prompt = f"""{system_prompt}
@@ -186,7 +240,7 @@ The response must conform to this schema:
 
         raise last_error or LLMError("Unknown error")
 
-    def _parse_json_response(self, text: str, response_model: Type[T]) -> T:
+    def _parse_json_response(self, text: str, response_model: type[T]) -> T:
         """Parse a JSON response, handling common formatting issues."""
         # Strip markdown code blocks if present
         text = text.strip()
@@ -202,9 +256,9 @@ The response must conform to this schema:
             data = json.loads(text)
             return response_model.model_validate(data)
         except json.JSONDecodeError as e:
-            raise LLMParseError(f"Invalid JSON: {e}")
+            raise LLMParseError(f"Invalid JSON: {e}") from e
         except Exception as e:
-            raise LLMParseError(f"Validation error: {e}")
+            raise LLMParseError(f"Validation error: {e}") from e
 
 
 # Global LLM client instance

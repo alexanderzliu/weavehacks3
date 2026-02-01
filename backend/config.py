@@ -1,5 +1,6 @@
-from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -11,6 +12,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
     CARTESIA_API_KEY: str = ""
+
+    # OpenAI-compatible endpoint (Groq, Together, Ollama, etc.)
+    OPENAI_COMPATIBLE_BASE_URL: str = ""
+    OPENAI_COMPATIBLE_API_KEY: str = ""
 
     # Weave
     WANDB_API_KEY: str = ""

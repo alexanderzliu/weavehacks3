@@ -7,17 +7,17 @@ Uses LLM-as-judge to score across multiple dimensions:
 - Decision quality (role-specific)
 - Overall cheatsheet helpfulness
 """
+
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import weave
 from pydantic import BaseModel, Field
 
-from db.database import get_db_session
 from db import crud
+from db.database import get_db_session
 from game.llm import llm_client
-from models.schemas import ModelProvider, Cheatsheet, CheatsheetItem
-
+from models.schemas import Cheatsheet, CheatsheetItem, ModelProvider
 
 # ============ Data Models ============
 
@@ -35,7 +35,9 @@ class ScorerOutput(BaseModel):
         ge=0.0, le=1.0, description="How good were the player's role-specific decisions?"
     )
     overall_score: float = Field(
-        ge=0.0, le=1.0, description="Weighted composite score (40% victory, 20% survival, 40% decisions)"
+        ge=0.0,
+        le=1.0,
+        description="Weighted composite score (40% victory, 20% survival, 40% decisions)",
     )
     explanation: str = Field(description="Detailed reasoning for the scores")
 
@@ -98,7 +100,7 @@ Respond with valid JSON only."""
 
 async def build_evaluation_dataset(
     series_id: str,
-    game_numbers: Optional[list[int]] = None,
+    game_numbers: list[int] | None = None,
 ) -> list[dict]:
     """Build evaluation dataset from completed games.
 
@@ -138,10 +140,7 @@ async def build_evaluation_dataset(
 
                 if cheatsheet_db:
                     cs = Cheatsheet(
-                        items=[
-                            CheatsheetItem.model_validate(i)
-                            for i in cheatsheet_db.items
-                        ]
+                        items=[CheatsheetItem.model_validate(i) for i in cheatsheet_db.items]
                         if cheatsheet_db.items
                         else [],
                         version=cheatsheet_db.version,
@@ -159,13 +158,9 @@ async def build_evaluation_dataset(
                 )
 
                 # Extract player's actions
-                player_events = [
-                    e for e in events if e.actor_player_id == gp.player.id
-                ]
+                player_events = [e for e in events if e.actor_player_id == gp.player.id]
                 speeches = [
-                    e.payload.get("content", "")
-                    for e in player_events
-                    if e.type == "speech"
+                    e.payload.get("content", "") for e in player_events if e.type == "speech"
                 ]
                 votes = [
                     {
@@ -318,8 +313,7 @@ class CheatsheetScorer(weave.Scorer):
             transcript=transcript,
             speeches="\n".join(speeches) if speeches else "(no speeches)",
             votes="\n".join(
-                f"- Voted for {v['target']}: {v.get('reasoning', 'no reasoning')}"
-                for v in votes
+                f"- Voted for {v['target']}: {v.get('reasoning', 'no reasoning')}" for v in votes
             )
             if votes
             else "(no votes)",
@@ -353,8 +347,8 @@ class CheatsheetScorer(weave.Scorer):
 
 async def run_cheatsheet_evaluation(
     series_id: str,
-    eval_name: Optional[str] = None,
-    game_numbers: Optional[list[int]] = None,
+    eval_name: str | None = None,
+    game_numbers: list[int] | None = None,
     scorer_provider: str = "openai",
     scorer_model: str = "gpt-5-mini",
 ) -> dict:
@@ -427,7 +421,7 @@ async def run_cheatsheet_evaluation(
 
 async def get_evaluation_summary(
     series_id: str,
-    game_numbers: Optional[list[int]] = None,
+    game_numbers: list[int] | None = None,
 ) -> dict:
     """Get a quick summary without running full LLM evaluation.
 
@@ -447,9 +441,7 @@ async def get_evaluation_summary(
 
     # Cheatsheet stats
     has_cheatsheet = sum(1 for r in rows if r["cheatsheet_text"] != "No cheatsheet")
-    avg_version = (
-        sum(r["cheatsheet_version"] for r in rows) / total_rows if total_rows > 0 else 0
-    )
+    avg_version = sum(r["cheatsheet_version"] for r in rows) / total_rows if total_rows > 0 else 0
 
     return {
         "series_id": series_id,

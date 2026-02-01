@@ -1,17 +1,14 @@
 """WebSocket connection manager for live game streaming."""
+
 import asyncio
-import json
-from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
-from db.database import get_db_session
 from db import crud
+from db.database import get_db_session
 from models.schemas import GameEvent, Visibility
-
 
 router = APIRouter()
 
@@ -27,8 +24,8 @@ class Subscription:
         websocket: WebSocket,
         series_id: str,
         viewer_mode: bool = True,
-        player_id: Optional[str] = None,
-        player_role: Optional[str] = None,
+        player_id: str | None = None,
+        player_role: str | None = None,
     ):
         self.id = str(uuid4())
         self.websocket = websocket
@@ -54,7 +51,8 @@ class ConnectionManager:
         async with self._lock:
             if subscription.series_id in self._subscriptions:
                 self._subscriptions[subscription.series_id] = [
-                    s for s in self._subscriptions[subscription.series_id]
+                    s
+                    for s in self._subscriptions[subscription.series_id]
                     if s.id != subscription.id
                 ]
                 if not self._subscriptions[subscription.series_id]:
@@ -65,8 +63,8 @@ class ConnectionManager:
         websocket: WebSocket,
         series_id: str,
         viewer_mode: bool = True,
-        player_id: Optional[str] = None,
-        player_role: Optional[str] = None,
+        player_id: str | None = None,
+        player_role: str | None = None,
     ) -> Subscription:
         """Subscribe a WebSocket to a series."""
         subscription = Subscription(
@@ -113,10 +111,13 @@ class ConnectionManager:
         for sub in subscriptions:
             if self._should_send_event(sub, event):
                 try:
-                    await self._send_message(sub.websocket, WSMessage(
-                        type="event",
-                        payload=event.model_dump(mode="json"),
-                    ))
+                    await self._send_message(
+                        sub.websocket,
+                        WSMessage(
+                            type="event",
+                            payload=event.model_dump(mode="json"),
+                        ),
+                    )
                 except Exception:
                     # Connection might be closed
                     pass
@@ -154,7 +155,7 @@ class ConnectionManager:
         alive_player_ids: list[str],
         phase: str,
         day_number: int,
-        players: Optional[list[dict]] = None,
+        players: list[dict] | None = None,
     ) -> None:
         """Broadcast game state snapshot."""
         async with self._lock:
@@ -176,12 +177,17 @@ class ConnectionManager:
             except Exception:
                 pass
 
-    async def send_error(self, websocket: WebSocket, message: str, details: Optional[dict] = None) -> None:
+    async def send_error(
+        self, websocket: WebSocket, message: str, details: dict | None = None
+    ) -> None:
         """Send an error message to a specific WebSocket."""
-        await self._send_message(websocket, WSMessage(
-            type="error",
-            payload={"message": message, "details": details or {}},
-        ))
+        await self._send_message(
+            websocket,
+            WSMessage(
+                type="error",
+                payload={"message": message, "details": details or {}},
+            ),
+        )
 
     async def _send_message(self, websocket: WebSocket, message: WSMessage) -> None:
         """Send a message to a WebSocket."""
@@ -231,7 +237,7 @@ ws_manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for live game streaming."""
     await ws_manager.connect(websocket)
-    subscription: Optional[Subscription] = None
+    subscription: Subscription | None = None
 
     try:
         while True:
@@ -258,10 +264,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     player_role=payload.get("player_role"),
                 )
 
-                await websocket.send_json({
-                    "type": "subscribed",
-                    "payload": {"series_id": series_id, "subscription_id": subscription.id},
-                })
+                await websocket.send_json(
+                    {
+                        "type": "subscribed",
+                        "payload": {"series_id": series_id, "subscription_id": subscription.id},
+                    }
+                )
 
                 # Send initial snapshot of current game state
                 await ws_manager.send_initial_snapshot(websocket, series_id)

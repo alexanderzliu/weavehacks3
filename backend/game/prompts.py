@@ -24,17 +24,14 @@ ROLE_INFO = {
 - You know who your fellow Mafia members are: {mafia_partners}
 - At night, you choose one player to kill
 - During the day, blend in and deflect suspicion onto innocent players""",
-
     "doctor": """As Doctor, your goal is to protect innocent players.
 - Each night, you choose one player to protect from the Mafia
 - If the Mafia targets the player you protected, they survive
 - You can protect yourself""",
-
     "deputy": """As Deputy, your goal is to identify the Mafia.
 - Each night, you investigate one player
 - You learn if they are "good" (Town) or "bad" (Mafia)
 - Use this information carefully - revealing yourself makes you a target""",
-
     "townsperson": """As Townsperson, your goal is to identify and eliminate the Mafia.
 - You have no special abilities
 - Use discussion and voting to find suspicious players

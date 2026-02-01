@@ -1,25 +1,27 @@
 """API routes for Mafia ACE."""
+
 import asyncio
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.database import get_db
 from db import crud
+from db.database import get_db
 from models.schemas import (
-    SeriesConfig,
-    SeriesResponse,
+    Cheatsheet as CheatsheetSchema,
+)
+from models.schemas import (
+    CheatsheetItem,
+    GamePhase,
     GameResponse,
+    ModelProvider,
     PlayerCheatsheetResponse,
     PlayerState,
-    GameEvent,
-    SeriesStatus,
-    GamePhase,
-    Winner,
     Role,
-    ModelProvider,
-    Cheatsheet as CheatsheetSchema,
-    CheatsheetItem,
+    SeriesConfig,
+    SeriesResponse,
+    SeriesStatus,
+    Winner,
 )
 
 router = APIRouter()
@@ -31,10 +33,26 @@ _running_series: dict[str, asyncio.Task] = {}
 @router.post("/series", response_model=SeriesResponse)
 async def create_series(
     config: SeriesConfig,
-    random_seed: Optional[int] = None,
+    random_seed: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new series with players and initial cheatsheets."""
+    from game.llm import get_available_providers
+
+    # Validate that all requested providers have API keys configured
+    available = set(get_available_providers())
+    requested = {ModelProvider(p.model_provider) for p in config.players}
+    missing = requested - available
+
+    if missing:
+        missing_str = ", ".join(p.value for p in missing)
+        available_str = ", ".join(p.value for p in available) if available else "none"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing API keys for: {missing_str}. "
+            f"Configure them in backend/.env. Available providers: {available_str}",
+        )
+
     series = await crud.create_series(db, config, random_seed)
     await db.commit()
 
@@ -52,7 +70,6 @@ async def create_series(
 @router.post("/series/{series_id}/start")
 async def start_series(
     series_id: str,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """Start running a series asynchronously."""
@@ -214,7 +231,7 @@ async def get_game_events(
 @router.get("/players/{player_id}/cheatsheet", response_model=PlayerCheatsheetResponse)
 async def get_player_cheatsheet(
     player_id: str,
-    game_number: Optional[int] = None,
+    game_number: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Get the cheatsheet for a player.

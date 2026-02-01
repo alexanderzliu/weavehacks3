@@ -1,17 +1,18 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Any
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-
 # ============ Enums ============
+
 
 class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GOOGLE = "google"
+    OPENAI_COMPATIBLE = "openai_compatible"
 
 
 class Role(str, Enum):
@@ -78,15 +79,16 @@ class EventType(str, Enum):
 
 # ============ Cheatsheet Models ============
 
+
 class CheatsheetItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     category: str
     content: str
     helpfulness_score: float = Field(ge=0.0, le=1.0, default=0.5)
     times_used: int = 0
-    added_after_game: Optional[int] = None
-    last_updated_game: Optional[int] = None
-    source_event: Optional[str] = None  # The game event that taught this lesson
+    added_after_game: int | None = None
+    last_updated_game: int | None = None
+    source_event: str | None = None  # The game event that taught this lesson
 
 
 class Cheatsheet(BaseModel):
@@ -119,12 +121,13 @@ class Cheatsheet(BaseModel):
 
 # ============ Player Models ============
 
+
 class PlayerConfig(BaseModel):
     name: str
     model_provider: ModelProvider
     model_name: str
-    fixed_role: Optional[Role] = None
-    initial_cheatsheet: Optional[Cheatsheet] = None
+    fixed_role: Role | None = None
+    initial_cheatsheet: Cheatsheet | None = None
 
 
 class PlayerState(BaseModel):
@@ -132,17 +135,18 @@ class PlayerState(BaseModel):
     name: str
     model_provider: ModelProvider
     model_name: str
-    role: Optional[Role] = None
+    role: Role | None = None
     is_alive: bool = True
 
 
 # ============ Game Configuration ============
 
+
 class GameConfig(BaseModel):
     discussion_turns_per_day: int = Field(default=1, ge=1)  # 1 speech per player for hackathon
     allow_no_lynch: bool = True
     timeout_seconds: int = Field(default=60, ge=10)
-    random_seed: Optional[int] = None
+    random_seed: int | None = None
 
 
 class SeriesConfig(BaseModel):
@@ -154,6 +158,7 @@ class SeriesConfig(BaseModel):
 
 # ============ Event Models ============
 
+
 class GameEvent(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     ts: datetime = Field(default_factory=datetime.utcnow)
@@ -161,12 +166,13 @@ class GameEvent(BaseModel):
     game_id: str
     type: EventType
     visibility: Visibility
-    actor_id: Optional[str] = None
-    target_id: Optional[str] = None
+    actor_id: str | None = None
+    target_id: str | None = None
     payload: dict[str, Any] = {}
 
 
 # ============ Actor Output Models ============
+
 
 class ActorSpeech(BaseModel):
     content: str
@@ -185,10 +191,11 @@ class ActorNightChoice(BaseModel):
 
 # ============ Reflection Models ============
 
+
 class DeltaUpdate(BaseModel):
     action: str  # "add", "update", "remove"
-    item: Optional[CheatsheetItem] = None
-    item_id: Optional[str] = None
+    item: CheatsheetItem | None = None
+    item_id: str | None = None
     reasoning: str
     source_event: str = ""  # The specific game event that led to this lesson
 
@@ -204,7 +211,7 @@ class CuratorDecision(BaseModel):
     delta_index: int
     decision: str  # "accept", "reject", "merge"
     reasoning: str
-    merge_with_id: Optional[str] = None
+    merge_with_id: str | None = None
     source_event: str = ""  # Preserved from reflector - the game event that taught this lesson
 
 
@@ -217,6 +224,7 @@ class CuratorOutput(BaseModel):
 
 
 # ============ API Response Models ============
+
 
 class SeriesResponse(BaseModel):
     id: str
@@ -233,11 +241,11 @@ class GameResponse(BaseModel):
     series_id: str
     game_number: int
     status: GamePhase
-    winner: Optional[Winner] = None
+    winner: Winner | None = None
     players: list[PlayerState]
     day_number: int
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 class PlayerCheatsheetResponse(BaseModel):

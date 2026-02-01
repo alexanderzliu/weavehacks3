@@ -1,18 +1,18 @@
 """SQLAlchemy ORM models for Mafia ACE."""
+
 from datetime import datetime
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Float,
-    Boolean,
-    DateTime,
-    Text,
-    ForeignKey,
     JSON,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
     Index,
+    Integer,
+    String,
 )
-from sqlalchemy.orm import relationship, DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, relationship
 
 
 class Base(DeclarativeBase):
@@ -24,7 +24,9 @@ class Series(Base):
 
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="pending")  # pending, in_progress, stop_requested, completed
+    status = Column(
+        String, nullable=False, default="pending"
+    )  # pending, in_progress, stop_requested, completed
     total_games = Column(Integer, nullable=False)
     current_game_number = Column(Integer, default=0)
     config = Column(JSON, nullable=False)  # SeriesConfig as JSON
@@ -59,7 +61,9 @@ class Game(Base):
     id = Column(String, primary_key=True)
     series_id = Column(String, ForeignKey("series.id", ondelete="CASCADE"), nullable=False)
     game_number = Column(Integer, nullable=False)
-    status = Column(String, nullable=False, default="pending")  # pending, day, voting, night, completed
+    status = Column(
+        String, nullable=False, default="pending"
+    )  # pending, day, voting, night, completed
     winner = Column(String, nullable=True)  # mafia, town, or null
     day_number = Column(Integer, default=0)
     random_seed = Column(Integer, nullable=True)
@@ -75,6 +79,7 @@ class Game(Base):
 
 class GamePlayer(Base):
     """Junction table for game-player relationship with role assignment."""
+
     __tablename__ = "game_players"
 
     id = Column(String, primary_key=True)
@@ -98,14 +103,14 @@ class Cheatsheet(Base):
     version = Column(Integer, nullable=False, default=0)
     items = Column(JSON, nullable=False, default=list)  # List of CheatsheetItem dicts
     created_at = Column(DateTime, default=datetime.utcnow)
-    created_after_game = Column(Integer, nullable=True)  # Game number this version was created after
+    created_after_game = Column(
+        Integer, nullable=True
+    )  # Game number this version was created after
 
     # Relationships
     player = relationship("Player", back_populates="cheatsheets")
 
-    __table_args__ = (
-        Index("idx_cheatsheet_player_version", "player_id", "version"),
-    )
+    __table_args__ = (Index("idx_cheatsheet_player_version", "player_id", "version"),)
 
 
 class GameEvent(Base):

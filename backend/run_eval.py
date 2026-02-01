@@ -7,6 +7,7 @@ Usage:
     python run_eval.py <series_id> --games 1 2 3      # Evaluate specific games
     python run_eval.py <series_id> --model gpt-4o     # Use different scorer model
 """
+
 import argparse
 import asyncio
 import os
@@ -15,15 +16,15 @@ import sys
 # Ensure backend is in path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Import directly to avoid game/__init__.py which has heavy dependencies
+import importlib.util
+
 import weave
 
 from config import get_settings
 
-# Import directly to avoid game/__init__.py which has heavy dependencies
-import importlib.util
 spec = importlib.util.spec_from_file_location(
-    "evaluation",
-    os.path.join(os.path.dirname(__file__), "game", "evaluation.py")
+    "evaluation", os.path.join(os.path.dirname(__file__), "game", "evaluation.py")
 )
 evaluation_module = importlib.util.module_from_spec(spec)
 sys.modules["game.evaluation"] = evaluation_module
@@ -122,10 +123,12 @@ async def main():
         print(f"Series: {results['series_id']}")
         print(f"Total rows evaluated: {results['total_rows']}")
         print("\nWeave Evaluation Results:")
-        print(results.get('results', 'No results available'))
+        print(results.get("results", "No results available"))
         print("=" * 50)
         print("\nView detailed results in Weave UI at:")
-        print(f"  https://wandb.ai/{settings.WEAVE_ENTITY}/{settings.WEAVE_PROJECT}/weave/evaluations")
+        print(
+            f"  https://wandb.ai/{settings.WEAVE_ENTITY}/{settings.WEAVE_PROJECT}/weave/evaluations"
+        )
 
 
 if __name__ == "__main__":
