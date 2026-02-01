@@ -315,8 +315,9 @@ class GameRunner:
         if tts_client.is_configured():
             try:
                 audio_base64 = await tts_client.generate_speech(content, player["name"])
+                logger.info("TTS generated for %s (%d chars)", player["name"], len(audio_base64))
             except TTSError as e:
-                logger.debug("TTS unavailable for %s: %s", player["name"], e)
+                logger.warning("TTS generation failed for %s: %s", player["name"], e)
 
         # Record in discussion
         self._day_discussion.append(f"{player['name']}: {content}")

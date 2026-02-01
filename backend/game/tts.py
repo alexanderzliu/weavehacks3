@@ -81,7 +81,8 @@ class TTSClient:
         except TTSError:
             raise
         except Exception as e:
-            logger.warning("TTS generation failed for %s: %s", player_name, e)
+            # Log at debug; caller (runner.py) handles user-visible logging
+            logger.debug("TTS API error for %s: %s", player_name, e)
             raise TTSError(f"TTS generation failed: {e}") from e
 
 
