@@ -108,10 +108,14 @@ Respond with JSON:
     {{"item_id": "...", "reasoning": "why"}}
   ],
   "final_cheatsheet": {{
-    "items": [...],
+    "items": [
+      {{"id": "...", "category": "...", "content": "...", "helpfulness_score": 0.5, "source_event": "The game event that taught this lesson (for newly added items)"}}
+    ],
     "version": {new_version}
   }}
-}}"""
+}}
+
+NOTE: For newly added items, include the source_event from the reflector's delta. Existing items don't need source_event unless being updated."""
 
 
 class ReflectionPipeline:

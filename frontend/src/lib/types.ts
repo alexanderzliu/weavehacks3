@@ -38,6 +38,7 @@ export interface CheatsheetItem {
 	times_used: number;
 	added_after_game?: number;
 	last_updated_game?: number;
+	source_event?: string; // The game event that taught this lesson
 }
 
 export interface Cheatsheet {
@@ -166,3 +167,11 @@ export interface WSSubscribed {
 }
 
 export type WSMessage = WSEvent | WSSeriesStatus | WSSnapshot | WSError | WSSubscribed;
+
+// Cheatsheet history types
+export interface CheatsheetVersion {
+	version: number;
+	items: CheatsheetItem[];
+	created_at: string;
+	created_after_game: number | null;
+}

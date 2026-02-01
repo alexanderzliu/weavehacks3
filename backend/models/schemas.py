@@ -86,6 +86,7 @@ class CheatsheetItem(BaseModel):
     times_used: int = 0
     added_after_game: Optional[int] = None
     last_updated_game: Optional[int] = None
+    source_event: Optional[str] = None  # The game event that taught this lesson
 
 
 class Cheatsheet(BaseModel):
