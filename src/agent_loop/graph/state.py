@@ -58,3 +58,8 @@ class AgentState(BaseModel):
     rankings: Annotated[list[Ranking], add] = Field(
         default_factory=list, description="Ranker output"
     )
+
+    @property
+    def is_iteration_limit_reached(self) -> bool:
+        """Check if the iteration limit has been reached."""
+        return self.iteration >= self.max_iterations

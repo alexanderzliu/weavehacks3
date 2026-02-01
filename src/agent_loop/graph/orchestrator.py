@@ -46,7 +46,7 @@ def route_after_decider(state: AgentState) -> Literal["agent", "__end__"]:
     if state.response:
         return cast(Literal["__end__"], END)
 
-    if state.iteration >= state.max_iterations:
+    if state.is_iteration_limit_reached:
         return cast(Literal["__end__"], END)
 
     return "agent"
