@@ -371,14 +371,23 @@
 		}
 	}
 
+	// Voice session error state
+	let voiceError = $state<string | null>(null);
+
 	// Join voice session for human player
 	async function handleJoinVoice() {
 		if (!series) return;
+
+		voiceError = null;
 
 		try {
 			const res = await joinVoiceSession(series.id);
 			if (res.ok) {
 				const data = await res.json();
+				if (!data.room_url || !data.room_token) {
+					voiceError = 'Voice room not available. Check DAILY_API_KEY in backend.';
+					return;
+				}
 				voiceSession = {
 					roomUrl: data.room_url,
 					roomToken: data.room_token,
@@ -387,10 +396,11 @@
 				};
 				setHumanPlayerId(data.player_id);
 			} else {
-				console.error('Failed to join voice session');
+				const errorData = await res.json().catch(() => ({}));
+				voiceError = errorData.detail || 'Failed to join voice session';
 			}
 		} catch (e) {
-			console.error('Error joining voice session:', e);
+			voiceError = e instanceof Error ? e.message : 'Error joining voice session';
 		}
 	}
 
@@ -761,6 +771,9 @@
 								</svg>
 								Join as Human Player
 							</button>
+							{#if voiceError}
+								<span class="voice-error">{voiceError}</span>
+							{/if}
 						{/if}
 					</div>
 				{/if}
@@ -1603,5 +1616,14 @@
 	.join-voice-btn svg {
 		width: 16px;
 		height: 16px;
+	}
+
+	.voice-error {
+		font-family: var(--font-body);
+		font-size: 0.8rem;
+		color: var(--danger);
+		padding: 0.25rem 0.5rem;
+		background: rgba(196, 30, 58, 0.1);
+		border-radius: 4px;
 	}
 </style>

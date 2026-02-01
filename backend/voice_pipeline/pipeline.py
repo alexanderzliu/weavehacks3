@@ -23,10 +23,10 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask, PipelineParams
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-from pipecat.services.deepgram import DeepgramSTTService
-from pipecat.services.cartesia import CartesiaTTSService
-from pipecat.transports.services.daily import DailyParams, DailyTransport
-from pipecat.vad.silero import SileroVADAnalyzer
+from pipecat.services.deepgram.stt import DeepgramSTTService
+from pipecat.services.cartesia.tts import CartesiaTTSService
+from pipecat.transports.daily.transport import DailyTransport, DailyParams
+from pipecat.audio.vad.silero import SileroVADAnalyzer
 
 from config import get_settings
 
@@ -247,6 +247,7 @@ async def create_daily_room() -> tuple[str, str]:
         Tuple of (room_url, room_token)
     """
     import httpx
+    import time
 
     async with httpx.AsyncClient() as client:
         # Create room
@@ -255,7 +256,7 @@ async def create_daily_room() -> tuple[str, str]:
             headers={"Authorization": f"Bearer {settings.DAILY_API_KEY}"},
             json={
                 "properties": {
-                    "exp": int(asyncio.get_event_loop().time()) + 3600,  # 1 hour
+                    "exp": int(time.time()) + 3600,  # 1 hour from now
                     "enable_chat": False,
                     "enable_screenshare": False,
                     "start_video_off": True,

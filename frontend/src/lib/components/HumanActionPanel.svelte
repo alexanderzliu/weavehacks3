@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { humanTurnState, sendHumanVote, sendHumanNightAction } from '$lib/websocket';
+	import { humanTurnState, sendHumanVote, sendHumanNightAction, sendHumanSpeech } from '$lib/websocket';
 
 	interface Props {
 		seriesId: string;
@@ -8,12 +8,29 @@
 
 	let { seriesId, players }: Props = $props();
 
+	// Speech input state
+	let speechText = $state('');
+
 	function handleVote(target: string) {
 		sendHumanVote(seriesId, target);
 	}
 
 	function handleNightAction(target: string) {
 		sendHumanNightAction(seriesId, target);
+	}
+
+	function handleSpeech() {
+		if (speechText.trim()) {
+			sendHumanSpeech(seriesId, speechText.trim());
+			speechText = '';
+		}
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			handleSpeech();
+		}
 	}
 
 	function getRoleActionText(role: string | null): string {
@@ -30,10 +47,13 @@
 	}
 </script>
 
-{#if $humanTurnState.isMyTurn && ($humanTurnState.action === 'vote' || $humanTurnState.action === 'night_action')}
-	<div class="action-panel" class:night={$humanTurnState.action === 'night_action'}>
+{#if $humanTurnState.isMyTurn}
+	<div class="action-panel" class:night={$humanTurnState.action === 'night_action'} class:speech={$humanTurnState.action === 'speech'}>
 		<div class="panel-header">
-			{#if $humanTurnState.action === 'vote'}
+			{#if $humanTurnState.action === 'speech'}
+				<h3>Your Turn to Speak</h3>
+				<p>Share your thoughts with the group. Press Enter to send.</p>
+			{:else if $humanTurnState.action === 'vote'}
 				<h3>Cast Your Vote</h3>
 				<p>Choose a player to vote for elimination, or skip.</p>
 			{:else}
@@ -42,25 +62,43 @@
 			{/if}
 		</div>
 
-		<div class="targets">
-			{#each $humanTurnState.validTargets as target}
-				{@const player = players.find((p) => p.name === target)}
-				<button
-					class="target-btn"
-					class:dead={player && !player.is_alive}
-					onclick={() =>
-						$humanTurnState.action === 'vote' ? handleVote(target) : handleNightAction(target)}
-				>
-					{target}
+		{#if $humanTurnState.action === 'speech'}
+			<div class="speech-input">
+				<textarea
+					bind:value={speechText}
+					placeholder="What would you like to say?"
+					rows="3"
+					onkeydown={handleKeydown}
+				></textarea>
+				<button class="send-btn" onclick={handleSpeech} disabled={!speechText.trim()}>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<line x1="22" y1="2" x2="11" y2="13"/>
+						<polygon points="22 2 15 22 11 13 2 9 22 2"/>
+					</svg>
+					Send
 				</button>
-			{/each}
+			</div>
+		{:else}
+			<div class="targets">
+				{#each $humanTurnState.validTargets as target}
+					{@const player = players.find((p) => p.name === target)}
+					<button
+						class="target-btn"
+						class:dead={player && !player.is_alive}
+						onclick={() =>
+							$humanTurnState.action === 'vote' ? handleVote(target) : handleNightAction(target)}
+					>
+						{target}
+					</button>
+				{/each}
 
-			{#if $humanTurnState.action === 'vote'}
-				<button class="target-btn skip" onclick={() => handleVote('no_lynch')}>
-					Skip Vote (No Lynch)
-				</button>
-			{/if}
-		</div>
+				{#if $humanTurnState.action === 'vote'}
+					<button class="target-btn skip" onclick={() => handleVote('no_lynch')}>
+						Skip Vote (No Lynch)
+					</button>
+				{/if}
+			</div>
+		{/if}
 	</div>
 {/if}
 
