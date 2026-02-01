@@ -1,0 +1,512 @@
+/* ============================================
+   MAFIA ACE - 1920s SPEAKEASY NOIR THEME
+   ============================================
+   A dark, elegant aesthetic inspired by prohibition-era
+   speakeasies, film noir, and Art Deco design.
+   ============================================ */
+
+/* Import noir theme variables and effects */
+@import './lib/styles/noir-theme.css';
+
+/* ============================================
+   TYPOGRAPHY - Import Vintage Fonts
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+/* ============================================
+   CSS VARIABLES - NOIR DESIGN SYSTEM
+   ============================================ */
+:root {
+	/* Core Noir Palette - extended */
+	--bg-primary: #0a0908;
+	--bg-secondary: #141412;
+	--bg-tertiary: #1a1917;
+	--bg-card: linear-gradient(135deg, #1a1917 0%, #141412 100%);
+	--bg-card-solid: #181715;
+	--bg-elevated: #1f1d1a;
+
+	/* Accent Colors */
+	--accent: #d4af37;
+	--accent-hover: #f4cf47;
+	--accent-dim: #a68829;
+	--accent-glow: rgba(212, 175, 55, 0.3);
+
+	/* Role/Status Colors */
+	--success: #50c878;
+	--warning: #d4af37;
+	--danger: #c41e3a;
+	--mafia: #c41e3a;
+	--town: #b8860b;
+
+	/* Text Colors */
+	--text-primary: #f5e6c8;
+	--text-secondary: #a89880;
+	--text-muted: #6a5d4d;
+	--text-gold: #d4af37;
+	--text-cream: #f5e6c8;
+
+	/* Borders & Shadows */
+	--border: #2a2520;
+	--border-gold: #8b7355;
+	--border-accent: #d4af37;
+	--shadow-noir: 0 10px 40px rgba(0, 0, 0, 0.6);
+	--shadow-glow-gold: 0 0 20px rgba(212, 175, 55, 0.15);
+	--shadow-card:
+		0 4px 20px rgba(0, 0, 0, 0.4),
+		0 0 0 1px rgba(139, 115, 85, 0.2);
+
+	/* Wood & Felt Textures */
+	--wood-dark: #2a1f14;
+	--wood-medium: #4a3728;
+	--wood-light: #6a5040;
+	--felt-green: #1a4d2e;
+
+	/* Typography */
+	--font-display: 'Playfair Display', Georgia, serif;
+	--font-heading: 'Bebas Neue', Impact, sans-serif;
+	--font-body: 'Cormorant Garamond', Georgia, serif;
+	--font-mono: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+/* ============================================
+   RESET & BASE STYLES
+   ============================================ */
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html,
+body {
+	font-family: var(--font-body);
+	font-size: 16px;
+	background: var(--bg-primary);
+	color: var(--text-primary);
+	line-height: 1.7;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Film Grain Overlay - Global */
+body::before {
+	content: '';
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 99999;
+	opacity: 0.015;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Ambient Vignette - Global */
+body::after {
+	content: '';
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 99998;
+	background: radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(0,0,0,0.4) 100%);
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+	font-family: var(--font-display);
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	color: var(--text-cream);
+}
+
+h1 {
+	font-size: 2.5rem;
+	background: linear-gradient(135deg, var(--text-cream) 0%, var(--text-gold) 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+h2 {
+	font-size: 1.75rem;
+	color: var(--text-gold);
+}
+
+h3 {
+	font-family: var(--font-heading);
+	font-size: 1rem;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	color: var(--text-secondary);
+}
+
+/* ============================================
+   LINKS
+   ============================================ */
+a {
+	color: var(--accent);
+	text-decoration: none;
+	transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+a:hover {
+	color: var(--accent-hover);
+	text-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* ============================================
+   BUTTONS - Art Deco Inspired
+   ============================================ */
+button {
+	cursor: pointer;
+	font-family: var(--font-heading);
+	font-size: 0.9rem;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	padding: 0.75rem 1.5rem;
+	border: none;
+	border-radius: 2px;
+	background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+	color: var(--bg-primary);
+	transition: all 0.3s ease;
+	position: relative;
+	overflow: hidden;
+	box-shadow:
+		0 4px 15px rgba(212, 175, 55, 0.2),
+		inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+button::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+	transition: left 0.5s ease;
+}
+
+button:hover {
+	background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent) 100%);
+	box-shadow:
+		0 6px 25px rgba(212, 175, 55, 0.35),
+		inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	transform: translateY(-1px);
+}
+
+button:hover::before {
+	left: 100%;
+}
+
+button:active {
+	transform: translateY(0);
+	box-shadow:
+		0 2px 10px rgba(212, 175, 55, 0.2),
+		inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+button:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: none;
+}
+
+button.secondary {
+	background: transparent;
+	border: 1px solid var(--border-gold);
+	color: var(--text-gold);
+	box-shadow: none;
+}
+
+button.secondary:hover {
+	background: rgba(212, 175, 55, 0.1);
+	border-color: var(--accent);
+	box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
+}
+
+button.danger {
+	background: linear-gradient(135deg, var(--danger) 0%, #8b1426 100%);
+	box-shadow: 0 4px 15px rgba(196, 30, 58, 0.2);
+}
+
+button.danger:hover {
+	background: linear-gradient(135deg, #e42941 0%, var(--danger) 100%);
+	box-shadow: 0 6px 25px rgba(196, 30, 58, 0.35);
+}
+
+/* ============================================
+   CARDS - Vintage Playing Card Style
+   ============================================ */
+.card {
+	background: var(--bg-card);
+	border: 1px solid var(--border-gold);
+	border-radius: 4px;
+	padding: 1.5rem;
+	position: relative;
+	box-shadow: var(--shadow-card);
+	transition: all 0.3s ease;
+}
+
+.card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 1px;
+	background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+	opacity: 0.5;
+}
+
+/* Art Deco corner accents */
+.card::after {
+	content: '';
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	width: 12px;
+	height: 12px;
+	border-top: 2px solid var(--accent-dim);
+	border-left: 2px solid var(--accent-dim);
+	opacity: 0.6;
+}
+
+.card:hover {
+	border-color: var(--accent);
+	box-shadow:
+		var(--shadow-card),
+		0 0 30px rgba(212, 175, 55, 0.1);
+}
+
+/* ============================================
+   BADGES - Role/Status Tags
+   ============================================ */
+.badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.35rem 0.75rem;
+	border-radius: 2px;
+	font-family: var(--font-heading);
+	font-size: 0.7rem;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	border: 1px solid transparent;
+	transition: all 0.2s ease;
+}
+
+.badge.pending {
+	background: rgba(106, 93, 77, 0.3);
+	border-color: var(--text-muted);
+	color: var(--text-secondary);
+}
+
+.badge.in_progress,
+.badge.in-progress {
+	background: rgba(212, 175, 55, 0.15);
+	border-color: var(--accent-dim);
+	color: var(--accent);
+	box-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
+}
+
+.badge.completed {
+	background: rgba(80, 200, 120, 0.15);
+	border-color: var(--success);
+	color: var(--success);
+}
+
+.badge.warning {
+	background: rgba(212, 175, 55, 0.15);
+	border-color: var(--accent);
+	color: var(--accent);
+}
+
+.badge.mafia {
+	background: rgba(196, 30, 58, 0.2);
+	border-color: var(--mafia);
+	color: #f5a5b3;
+	box-shadow: 0 0 10px rgba(196, 30, 58, 0.2);
+}
+
+.badge.town {
+	background: rgba(184, 134, 11, 0.2);
+	border-color: var(--town);
+	color: #e8d38a;
+}
+
+/* Phase badges */
+.badge.day {
+	background: var(--phase-discussion);
+	border-color: var(--accent-dim);
+	color: var(--accent);
+}
+
+.badge.night {
+	background: var(--phase-night);
+	border-color: #4a6a9a;
+	color: #8ab4f8;
+}
+
+.badge.voting {
+	background: var(--phase-voting);
+	border-color: var(--mafia);
+	color: #f5a5b3;
+}
+
+.badge.setup {
+	background: rgba(106, 93, 77, 0.2);
+	border-color: var(--text-muted);
+	color: var(--text-secondary);
+}
+
+.badge.ended {
+	background: rgba(212, 175, 55, 0.2);
+	border-color: var(--accent);
+	color: var(--accent-hover);
+}
+
+/* ============================================
+   FORM ELEMENTS - Vintage Style
+   ============================================ */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+	font-family: var(--font-body);
+	font-size: 1rem;
+	padding: 0.75rem 1rem;
+	background: var(--bg-primary);
+	border: 1px solid var(--border);
+	border-radius: 2px;
+	color: var(--text-primary);
+	transition: all 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	outline: none;
+	border-color: var(--accent-dim);
+	box-shadow:
+		0 0 0 2px rgba(212, 175, 55, 0.1),
+		0 0 15px rgba(212, 175, 55, 0.1);
+}
+
+input::placeholder,
+textarea::placeholder {
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+select {
+	cursor: pointer;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a89880' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 0.75rem center;
+	padding-right: 2.5rem;
+}
+
+select option {
+	background: var(--bg-secondary);
+	color: var(--text-primary);
+}
+
+/* ============================================
+   SCROLLBAR - Noir Style
+   ============================================ */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--border-gold);
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--accent-dim);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.text-gold {
+	color: var(--text-gold);
+}
+
+.text-muted {
+	color: var(--text-muted);
+}
+
+.glow-gold {
+	box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+/* Decorative divider */
+.divider {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	margin: 1.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: linear-gradient(90deg, transparent, var(--border-gold), transparent);
+}
+
+.divider span {
+	font-family: var(--font-heading);
+	font-size: 0.75rem;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+	from { opacity: 0; transform: translateY(10px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGold {
+	0%, 100% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
+	50% { box-shadow: 0 0 25px rgba(212, 175, 55, 0.4); }
+}
+
+@keyframes shimmer {
+	0% { background-position: -200% center; }
+	100% { background-position: 200% center; }
+}
+
+.animate-fade-in {
+	animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-pulse-gold {
+	animation: pulseGold 2s ease-in-out infinite;
+}

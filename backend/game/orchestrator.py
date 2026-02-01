@@ -1,0 +1,163 @@
+"""Series orchestrator - runs N games with reflection between each."""
+import asyncio
+from datetime import datetime
+from typing import Optional
+from uuid import uuid4
+
+import weave
+
+from db.database import get_db_session
+from db import crud
+from game.runner import GameRunner, assign_roles
+from game.reflection import ReflectionPipeline
+from models.schemas import (
+    SeriesStatus,
+    GamePhase,
+    GameEvent,
+    EventType,
+    Visibility,
+    ModelProvider,
+)
+from websocket.manager import ws_manager
+
+
+@weave.op()
+async def run_series(series_id: str) -> None:
+    """Run a complete series of games with reflection."""
+    # Load series data
+    async with get_db_session() as db:
+        series = await crud.get_series_with_games(db, series_id)
+        if not series:
+            raise ValueError(f"Series {series_id} not found")
+
+        players = await crud.get_players_for_series(db, series_id)
+
+    total_games = series.total_games
+    base_seed = series.random_seed
+
+    # Broadcast initial status
+    await ws_manager.broadcast_series_status(
+        series_id,
+        SeriesStatus.IN_PROGRESS.value,
+        0,
+        total_games,
+    )
+
+    try:
+        for game_number in range(1, total_games + 1):
+            # Check for stop request
+            async with get_db_session() as db:
+                series = await crud.get_series(db, series_id)
+                if series.status == SeriesStatus.STOP_REQUESTED.value:
+                    break
+
+            # Update current game number
+            async with get_db_session() as db:
+                await crud.update_series_status(
+                    db, series_id,
+                    SeriesStatus.IN_PROGRESS,
+                    current_game_number=game_number,
+                )
+
+            await ws_manager.broadcast_series_status(
+                series_id,
+                SeriesStatus.IN_PROGRESS.value,
+                game_number,
+                total_games,
+            )
+
+            # Create game
+            game_seed = base_seed + game_number if base_seed else None
+            async with get_db_session() as db:
+                game = await crud.create_game(db, series_id, game_number, game_seed)
+                game_id = game.id
+
+            # Assign roles
+            player_ids = [p.id for p in players]
+            await assign_roles(game_id, player_ids, game_seed)
+
+            # Run game
+            runner = GameRunner(game_id, series_id, game_seed)
+            winner = await runner.run()
+
+            # Check for stop request before reflection
+            async with get_db_session() as db:
+                series = await crud.get_series(db, series_id)
+                stop_after_reflection = series.status == SeriesStatus.STOP_REQUESTED.value
+
+            # Run reflection for each player
+            await run_reflections(series_id, game_id, game_number, winner.value)
+
+            if stop_after_reflection:
+                break
+
+        # Mark series complete
+        async with get_db_session() as db:
+            await crud.update_series_status(db, series_id, SeriesStatus.COMPLETED)
+
+        await ws_manager.broadcast_series_status(
+            series_id,
+            SeriesStatus.COMPLETED.value,
+            game_number,
+            total_games,
+        )
+
+    except Exception as e:
+        # Log error but don't crash
+        async with get_db_session() as db:
+            event = GameEvent(
+                id=str(uuid4()),
+                series_id=series_id,
+                game_id=series_id,  # Use series_id for series-level errors
+                type=EventType.ERROR,
+                visibility=Visibility.VIEWER,
+                payload={"error": str(e), "phase": "series"},
+            )
+            await crud.create_game_event(db, event)
+
+        await ws_manager.broadcast_event(series_id, event)
+
+        # Mark as completed (with error)
+        async with get_db_session() as db:
+            await crud.update_series_status(db, series_id, SeriesStatus.COMPLETED)
+
+
+async def run_reflections(
+    series_id: str,
+    game_id: str,
+    game_number: int,
+    winner: str,
+) -> None:
+    """Run reflection pipeline for all players after a game."""
+    pipeline = ReflectionPipeline(series_id, game_id, game_number)
+
+    # Get game players with their final state
+    async with get_db_session() as db:
+        game_players = await crud.get_game_players(db, game_id)
+
+    # Run reflections sequentially to manage LLM rate limits
+    for gp in game_players:
+        try:
+            await pipeline.run_for_player(
+                player_id=gp.player.id,
+                player_name=gp.player.name,
+                role=gp.role,
+                survived=gp.is_alive,
+                winner=winner,
+                model_provider=ModelProvider(gp.player.model_provider),
+                model_name=gp.player.model_name,
+            )
+        except Exception as e:
+            # Log but continue with other players
+            event = GameEvent(
+                id=str(uuid4()),
+                series_id=series_id,
+                game_id=game_id,
+                type=EventType.ERROR,
+                visibility=Visibility.VIEWER,
+                actor_id=gp.player.id,
+                payload={"error": str(e), "phase": "reflection"},
+            )
+            async with get_db_session() as db:
+                await crud.create_game_event(db, event)
+            await ws_manager.broadcast_event(series_id, event)
