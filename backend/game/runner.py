@@ -281,7 +281,8 @@ class GameRunner:
                 response_model=ActorSpeech,
             )
             content = speech.content
-        except LLMError:
+        except LLMError as e:
+            print(f"LLM ERROR (_player_speech) for {player['name']}: {e}")
             content = "I have nothing to add at this time."
 
         # Record in discussion
@@ -321,7 +322,8 @@ class GameRunner:
                 target = self._get_player_by_name(vote)
                 if not target or not target["is_alive"] or target["player_id"] == player["player_id"]:
                     vote = self.random.choice(alive_names + ["no_lynch"])
-        except LLMError:
+        except LLMError as e:
+            print(f"LLM ERROR (_player_vote) for {player['name']}: {e}")
             vote = self.random.choice(alive_names + ["no_lynch"])
             reasoning = "fallback"
 
@@ -501,7 +503,8 @@ class GameRunner:
             # Validate
             if target not in valid_targets:
                 target = self.random.choice(valid_targets) if valid_targets else None
-        except LLMError:
+        except LLMError as e:
+            print(f"LLM ERROR (_mafia_kill) for {player['name']}: {e}")
             target = self.random.choice(valid_targets) if valid_targets else None
             reasoning = "fallback"
 
@@ -546,7 +549,8 @@ class GameRunner:
 
             if target not in valid_targets:
                 target = self.random.choice(valid_targets)
-        except LLMError:
+        except LLMError as e:
+            print(f"LLM ERROR (_doctor_save) for {player['name']}: {e}")
             target = self.random.choice(valid_targets)
             reasoning = "fallback"
 
@@ -590,7 +594,8 @@ class GameRunner:
 
             if target not in valid_targets:
                 target = self.random.choice(valid_targets) if valid_targets else None
-        except LLMError:
+        except LLMError as e:
+            print(f"LLM ERROR (_deputy_investigate) for {player['name']}: {e}")
             target = self.random.choice(valid_targets) if valid_targets else None
             reasoning = "fallback"
 

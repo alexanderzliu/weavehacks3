@@ -110,7 +110,7 @@ class LLMClient:
         client = self._get_openai()
         response = await client.chat.completions.create(
             model=model_name,
-            max_tokens=2048,
+            max_completion_tokens=2048,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
