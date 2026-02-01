@@ -447,7 +447,8 @@
 		gap: 0.5rem;
 	}
 
-	.form-group label {
+	.form-group label,
+	.players-label {
 		font-family: var(--font-heading);
 		font-size: 0.75rem;
 		letter-spacing: 0.15em;
