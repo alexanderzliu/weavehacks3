@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from db import crud
 from db.database import get_db_session
-from models.schemas import GameEvent, Visibility
+from models.schemas import GameEvent, PlayerSnapshotDict, Visibility
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ class ConnectionManager:
         alive_player_ids: list[str],
         phase: str,
         day_number: int,
-        players: list[dict] | None = None,
+        players: list[PlayerSnapshotDict] | None = None,
     ) -> None:
         """Broadcast game state snapshot."""
         async with self._lock:

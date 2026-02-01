@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from models.schemas import GameEvent
+from models.schemas import GameEvent, PlayerSnapshotDict
 
 
 class EventBroadcaster(Protocol):
@@ -29,7 +29,7 @@ class EventBroadcaster(Protocol):
         alive_player_ids: list[str],
         phase: str,
         day_number: int,
-        players: list[dict] | None = None,
+        players: list[PlayerSnapshotDict] | None = None,
     ) -> None:
         """Broadcast game state snapshot."""
         ...
@@ -57,6 +57,6 @@ class NullBroadcaster:
         alive_player_ids: list[str],
         phase: str,
         day_number: int,
-        players: list[dict] | None = None,
+        players: list[PlayerSnapshotDict] | None = None,
     ) -> None:
         pass

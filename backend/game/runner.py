@@ -28,8 +28,8 @@ from models.schemas import (
     Cheatsheet,
     EventType,
     GameEvent,
-    GamePlayerDict,
     GamePhase,
+    GamePlayerDict,
     ModelProvider,
     PlayerSnapshotDict,
     Visibility,
@@ -60,7 +60,7 @@ class GameRunner:
         self.series_id = series_id
         self.random = random.Random(random_seed)
         self._broadcaster = broadcaster or NullBroadcaster()
-        self._game_players: list[dict] = []  # Cached player data
+        self._game_players: list[GamePlayerDict] = []  # Cached player data
         self._day_discussion: list[str] = []  # Current day's speeches
         self._day_number = 0
 
@@ -91,7 +91,7 @@ class GameRunner:
         await self._broadcaster.broadcast_event(self.series_id, event)
         return event
 
-    async def _load_game_players(self) -> list[dict]:
+    async def _load_game_players(self) -> list[GamePlayerDict]:
         """Load game players with their data."""
         async with get_db_session() as db:
             gps = await crud.get_game_players(db, self.game_id)
@@ -122,32 +122,32 @@ class GameRunner:
                 )
         return self._game_players
 
-    def _get_alive_players(self) -> list[dict]:
+    def _get_alive_players(self) -> list[GamePlayerDict]:
         return [p for p in self._game_players if p["is_alive"]]
 
-    def _get_dead_players(self) -> list[dict]:
+    def _get_dead_players(self) -> list[GamePlayerDict]:
         return [p for p in self._game_players if not p["is_alive"]]
 
-    def _get_players_for_snapshot(self) -> list[dict]:
+    def _get_players_for_snapshot(self) -> list[PlayerSnapshotDict]:
         """Get player data for WebSocket snapshot."""
         return [
-            {"name": p["name"], "role": p["role"], "is_alive": p["is_alive"]}
+            PlayerSnapshotDict(name=p["name"], role=p["role"], is_alive=p["is_alive"])
             for p in self._game_players
         ]
 
-    def _get_player_by_name(self, name: str) -> dict | None:
+    def _get_player_by_name(self, name: str) -> GamePlayerDict | None:
         for p in self._game_players:
             if p["name"].lower() == name.lower():
                 return p
         return None
 
-    def _get_player_by_id(self, player_id: str) -> dict | None:
+    def _get_player_by_id(self, player_id: str) -> GamePlayerDict | None:
         for p in self._game_players:
             if p["player_id"] == player_id:
                 return p
         return None
 
-    def _build_game_context(self, player: dict) -> str:
+    def _build_game_context(self, player: GamePlayerDict) -> str:
         """Build the game context string for a player."""
         alive = [p["name"] for p in self._get_alive_players()]
         dead = [p["name"] for p in self._get_dead_players()]
@@ -289,7 +289,7 @@ class GameRunner:
         return self._check_win_condition()
 
     @weave.op()
-    async def _player_speech(self, player: dict) -> None:
+    async def _player_speech(self, player: GamePlayerDict) -> None:
         """Have a player give a speech."""
         context = self._build_game_context(player)
         system_prompt = SPEECH_SYSTEM_PROMPT.format(
@@ -334,7 +334,7 @@ class GameRunner:
         )
 
     @weave.op()
-    async def _player_vote(self, player: dict) -> str:
+    async def _player_vote(self, player: GamePlayerDict) -> str:
         """Have a player cast their vote."""
         context = self._build_game_context(player)
         system_prompt = VOTE_SYSTEM_PROMPT.format(
@@ -393,7 +393,7 @@ class GameRunner:
 
         return vote
 
-    async def _resolve_lynch(self, votes: dict[str, str]) -> dict | None:
+    async def _resolve_lynch(self, votes: dict[str, str]) -> GamePlayerDict | None:
         """Resolve voting and potentially lynch a player."""
         # Count votes
         vote_counts: dict[str, int] = {}

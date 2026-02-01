@@ -14,8 +14,12 @@
   // Typewriter effect state
   let displayedCharCount = $state(0);
   let typewriterInterval: ReturnType<typeof setInterval> | null = null;
-  const CHARS_PER_SECOND = 50;
-  const INTERVAL_MS = 1000 / CHARS_PER_SECOND; // 20ms per character
+
+  // Default speed when no audio (fallback)
+  const DEFAULT_CHARS_PER_SECOND = 50;
+  // Clamp speeds to reasonable bounds
+  const MIN_CHARS_PER_SECOND = 15;  // Don't go too slow
+  const MAX_CHARS_PER_SECOND = 120; // Don't go too fast
 
   // Track last seen content to detect changes
   let lastSeenContent = $state<string | null>(null);
@@ -25,11 +29,72 @@
     return text.length > 800 ? text.slice(0, 797) + '...' : text;
   }
 
+  // Parse WAV header to get audio duration in seconds
+  function getWavDuration(base64: string): number | null {
+    try {
+      const binary = atob(base64);
+
+      // WAV header structure (little-endian):
+      // Bytes 24-27: Sample rate
+      // Bytes 28-31: Byte rate (sample rate * channels * bytes per sample)
+      // Bytes 34-35: Bits per sample
+      // Bytes 40-43: Data chunk size (after "data" marker)
+
+      // Read sample rate (bytes 24-27, little-endian)
+      const sampleRate =
+        binary.charCodeAt(24) |
+        (binary.charCodeAt(25) << 8) |
+        (binary.charCodeAt(26) << 16) |
+        (binary.charCodeAt(27) << 24);
+
+      // Read number of channels (bytes 22-23, little-endian)
+      const numChannels = binary.charCodeAt(22) | (binary.charCodeAt(23) << 8);
+
+      // Read bits per sample (bytes 34-35, little-endian)
+      const bitsPerSample = binary.charCodeAt(34) | (binary.charCodeAt(35) << 8);
+
+      // Find the "data" chunk - it starts after the format chunk
+      // Usually at byte 36, but can vary if there are extra chunks
+      let dataOffset = 36;
+      while (dataOffset < binary.length - 8) {
+        const chunkId = binary.slice(dataOffset, dataOffset + 4);
+        if (chunkId === 'data') {
+          // Read data size (next 4 bytes, little-endian)
+          const dataSize =
+            binary.charCodeAt(dataOffset + 4) |
+            (binary.charCodeAt(dataOffset + 5) << 8) |
+            (binary.charCodeAt(dataOffset + 6) << 16) |
+            (binary.charCodeAt(dataOffset + 7) << 24);
+
+          // Calculate duration
+          const bytesPerSample = bitsPerSample / 8;
+          const duration = dataSize / (sampleRate * numChannels * bytesPerSample);
+          return duration;
+        }
+        // Move to next chunk (chunk header is 8 bytes + chunk size)
+        const chunkSize =
+          binary.charCodeAt(dataOffset + 4) |
+          (binary.charCodeAt(dataOffset + 5) << 8) |
+          (binary.charCodeAt(dataOffset + 6) << 16) |
+          (binary.charCodeAt(dataOffset + 7) << 24);
+        dataOffset += 8 + chunkSize;
+      }
+
+      return null; // Couldn't find data chunk
+    } catch {
+      return null;
+    }
+  }
+
   // The target content to stream
   let targetContent = $derived(truncate(content));
 
   // Track current audio for cleanup
   let currentAudio: HTMLAudioElement | null = null;
+
+  // Track completion states for synchronization
+  let audioComplete = $state(false);
+  let typewriterComplete = $state(false);
 
   // Start streaming when content changes
   $effect(() => {
@@ -39,8 +104,10 @@
     if (newContent === lastSeenContent) return;
     lastSeenContent = newContent;
 
-    // Reset
+    // Reset state
     displayedCharCount = 0;
+    audioComplete = false;
+    typewriterComplete = false;
 
     // Clear any existing interval
     if (typewriterInterval) {
@@ -48,19 +115,53 @@
       typewriterInterval = null;
     }
 
-    // Stop any playing audio and play new audio if available
+    // Stop any playing audio
     if (currentAudio) {
       currentAudio.pause();
       currentAudio = null;
     }
-    if (audioBase64) {
-      try {
-        currentAudio = new Audio(`data:audio/wav;base64,${audioBase64}`);
-        currentAudio.play().catch(() => {}); // Silent failure
-      } catch {}
-    }
 
     const target = truncate(newContent);
+
+    // Calculate typewriter speed based on audio duration
+    let intervalMs = 1000 / DEFAULT_CHARS_PER_SECOND;
+
+    if (audioBase64) {
+      const audioDuration = getWavDuration(audioBase64);
+
+      if (audioDuration && audioDuration > 0 && target.length > 0) {
+        // Sync typewriter to audio duration
+        const charsPerSecond = target.length / audioDuration;
+        // Clamp to reasonable bounds
+        const clampedSpeed = Math.max(MIN_CHARS_PER_SECOND, Math.min(MAX_CHARS_PER_SECOND, charsPerSecond));
+        intervalMs = 1000 / clampedSpeed;
+      }
+
+      // Play audio
+      try {
+        currentAudio = new Audio(`data:audio/wav;base64,${audioBase64}`);
+        currentAudio.onended = () => {
+          audioComplete = true;
+          maybeComplete();
+        };
+        currentAudio.play().catch(() => {
+          // If audio fails to play, mark as complete
+          audioComplete = true;
+        });
+      } catch {
+        audioComplete = true;
+      }
+    } else {
+      // No audio, mark as complete
+      audioComplete = true;
+    }
+
+    // Helper to check if both are done
+    function maybeComplete() {
+      if (audioComplete && typewriterComplete) {
+        onStreamComplete?.();
+      }
+    }
 
     // Start streaming
     typewriterInterval = setInterval(() => {
@@ -72,10 +173,10 @@
           clearInterval(typewriterInterval);
           typewriterInterval = null;
         }
-        // Notify parent that streaming is complete
-        onStreamComplete?.();
+        typewriterComplete = true;
+        maybeComplete();
       }
-    }, INTERVAL_MS);
+    }, intervalMs);
   });
 
   // Cleanup on destroy
