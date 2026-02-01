@@ -52,7 +52,7 @@ class AgentLoopResult:
     def __init__(
         self,
         thread_id: str,
-        response: str,
+        response: str | None,
         iterations: int,
         state: AgentState,
     ):
@@ -60,6 +60,11 @@ class AgentLoopResult:
         self.response = response
         self.iterations = iterations
         self.state = state
+
+    @property
+    def has_response(self) -> bool:
+        """Check if a response was generated."""
+        return self.response is not None
 
 
 class AgentLoop:
@@ -146,7 +151,7 @@ class AgentLoop:
 
         return AgentLoopResult(
             thread_id=thread_id,
-            response=result_state.response or "No response generated",
+            response=result_state.response,
             iterations=result_state.iteration,
             state=result_state,
         )
