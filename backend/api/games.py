@@ -12,6 +12,7 @@ from models.schemas import (
     PlayerState,
     Role,
     Winner,
+    to_utc_iso,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,7 @@ async def get_game_events(
     return [
         {
             "id": e.id,
-            "ts": e.ts.isoformat(),
+            "ts": to_utc_iso(e.ts),
             "type": e.type,
             "visibility": e.visibility,
             "actor_player_id": e.actor_player_id,

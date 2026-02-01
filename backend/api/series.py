@@ -11,6 +11,7 @@ from models.schemas import (
     SeriesConfig,
     SeriesResponse,
     SeriesStatus,
+    to_utc_iso,
 )
 
 logger = logging.getLogger(__name__)
@@ -232,8 +233,8 @@ async def get_series_games(
             "status": g.status,
             "winner": g.winner,
             "day_number": g.day_number,
-            "started_at": g.started_at.isoformat() if g.started_at else None,
-            "completed_at": g.completed_at.isoformat() if g.completed_at else None,
+            "started_at": to_utc_iso(g.started_at),
+            "completed_at": to_utc_iso(g.completed_at),
         }
         for g in games
     ]

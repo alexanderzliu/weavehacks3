@@ -11,6 +11,7 @@ from models.schemas import (
 from models.schemas import (
     CheatsheetItem,
     PlayerCheatsheetResponse,
+    to_utc_iso,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,7 @@ async def get_cheatsheet_history(
         {
             "version": cs.version,
             "items": cs.items,
-            "created_at": cs.created_at.isoformat(),
+            "created_at": to_utc_iso(cs.created_at),
             "created_after_game": cs.created_after_game,
         }
         for cs in cheatsheets
