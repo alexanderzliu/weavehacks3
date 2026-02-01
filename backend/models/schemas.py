@@ -3,12 +3,26 @@ from enum import Enum
 from typing import Any, TypeAlias, TypedDict
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 def _utc_now() -> datetime:
     """Return timezone-aware UTC datetime for Pydantic defaults."""
     return datetime.now(UTC)
+
+
+def _ensure_utc(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware UTC. Treats naive datetimes as UTC."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt
+
+
+def to_utc_iso(dt: datetime | None) -> str | None:
+    """Convert datetime to UTC ISO format with Z suffix. Returns None for None input."""
+    if dt is None:
+        return None
+    return _ensure_utc(dt).isoformat().replace("+00:00", "Z")
 
 
 # Event payloads are polymorphic by EventType. A full discriminated union would
@@ -220,6 +234,11 @@ class GameEvent(BaseModel):
     # discriminated unions which add complexity without significant benefit here
     payload: EventPayload = Field(default_factory=dict)
 
+    @field_serializer("ts")
+    def serialize_ts(self, value: datetime) -> str:
+        """Ensure timestamp is serialized as UTC ISO format with Z suffix."""
+        return _ensure_utc(value).isoformat().replace("+00:00", "Z")
+
 
 # ============ Actor Output Models ============
 
@@ -296,6 +315,11 @@ class SeriesResponse(BaseModel):
     config: SeriesConfig
     created_at: datetime
 
+    @field_serializer("created_at")
+    def serialize_created_at(self, value: datetime) -> str:
+        """Ensure timestamp is serialized as UTC ISO format with Z suffix."""
+        return _ensure_utc(value).isoformat().replace("+00:00", "Z")
+
 
 class GameResponse(BaseModel):
     id: str
@@ -307,6 +331,13 @@ class GameResponse(BaseModel):
     day_number: int
     started_at: datetime | None = None
     completed_at: datetime | None = None
+
+    @field_serializer("started_at", "completed_at")
+    def serialize_timestamps(self, value: datetime | None) -> str | None:
+        """Ensure timestamps are serialized as UTC ISO format with Z suffix."""
+        if value is None:
+            return None
+        return _ensure_utc(value).isoformat().replace("+00:00", "Z")
 
 
 class PlayerCheatsheetResponse(BaseModel):

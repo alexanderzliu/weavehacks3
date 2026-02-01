@@ -137,7 +137,9 @@
 	}
 
 	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleString();
+		return new Date(dateStr).toLocaleString(undefined, {
+			timeZoneName: 'short'
+		});
 	}
 
 	// W&B Inference curated models

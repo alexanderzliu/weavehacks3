@@ -1,6 +1,6 @@
 """CRUD operations for database models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import select, update
@@ -94,7 +94,7 @@ async def update_series_status(
     current_game_number: int | None = None,
 ) -> None:
     """Update series status and optionally current game number."""
-    values = {"status": status.value, "updated_at": datetime.utcnow()}
+    values = {"status": status.value, "updated_at": datetime.now(UTC)}
     if current_game_number is not None:
         values["current_game_number"] = current_game_number
 
