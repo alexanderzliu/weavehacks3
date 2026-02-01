@@ -1,29 +1,35 @@
+import logging
 import os
 from pathlib import Path
 
-# === DEBUG: Understanding the environment ===
-print(f"[DEBUG] Current working directory: {os.getcwd()}")
-print(f"[DEBUG] .env exists in cwd: {Path('.env').exists()}")
-print(
-    f"[DEBUG] WANDB_API_KEY in os.environ before settings: {os.environ.get('WANDB_API_KEY', '(not set)')[:20]}..."
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
+
+# Debug environment state before loading settings
+logger.debug("Current working directory: %s", os.getcwd())
+logger.debug(".env exists in cwd: %s", Path(".env").exists())
+logger.debug(
+    "WANDB_API_KEY in os.environ before settings: %s...",
+    os.environ.get("WANDB_API_KEY", "(not set)")[:20],
 )
 
 from config import get_settings
 
 settings = get_settings()
 
-print(
-    f"[DEBUG] settings.WANDB_API_KEY: {settings.WANDB_API_KEY[:20] if settings.WANDB_API_KEY else '(empty)'}..."
+logger.debug(
+    "settings.WANDB_API_KEY: %s...",
+    settings.WANDB_API_KEY[:20] if settings.WANDB_API_KEY else "(empty)",
 )
-print(f"[DEBUG] settings.WEAVE_ENTITY: {settings.WEAVE_ENTITY}")
-print(f"[DEBUG] settings.WEAVE_PROJECT: {settings.WEAVE_PROJECT}")
+logger.debug("settings.WEAVE_ENTITY: %s", settings.WEAVE_ENTITY)
+logger.debug("settings.WEAVE_PROJECT: %s", settings.WEAVE_PROJECT)
 
 # Set WANDB_API_KEY before importing weave (it checks auth on import)
 if settings.WANDB_API_KEY:
     os.environ["WANDB_API_KEY"] = settings.WANDB_API_KEY
-    print(f"[DEBUG] Set os.environ WANDB_API_KEY to: {os.environ['WANDB_API_KEY'][:20]}...")
+    logger.debug("Set os.environ WANDB_API_KEY to: %s...", os.environ["WANDB_API_KEY"][:20])
 else:
-    print("[DEBUG] WARNING: settings.WANDB_API_KEY is empty, not setting env var")
+    logger.warning("WANDB_API_KEY is empty, Weave tracing will be disabled")
 
 from contextlib import asynccontextmanager
 
@@ -46,24 +52,21 @@ async def lifespan(app: FastAPI):
 
     available = get_available_providers()
     if not available:
-        print("\n" + "=" * 60)
-        print("WARNING: No AI provider API keys configured!")
-        print("Set at least one in backend/.env:")
-        print("  ANTHROPIC_API_KEY=sk-ant-...")
-        print("  OPENAI_API_KEY=sk-...")
-        print("  GOOGLE_API_KEY=...")
-        print("=" * 60 + "\n")
+        logger.warning(
+            "No AI provider API keys configured! "
+            "Set at least one in backend/.env: ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY"
+        )
     else:
         providers_str = ", ".join(p.value for p in available)
-        print(f"AI providers available: {providers_str}")
+        logger.info("AI providers available: %s", providers_str)
 
     if settings.WANDB_API_KEY:
         try:
             weave_project = f"{settings.WEAVE_ENTITY}/{settings.WEAVE_PROJECT}"
             weave.init(weave_project)
-            print(f"Weave initialized: {weave_project}")
+            logger.info("Weave initialized: %s", weave_project)
         except Exception as e:
-            print(f"Warning: Weave initialization failed: {e}")
+            logger.warning("Weave initialization failed: %s", e)
     yield
     # Shutdown
     pass
