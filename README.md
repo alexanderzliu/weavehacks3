@@ -67,7 +67,7 @@ uv run agent-loop
 # Usage
 curl -X POST http://localhost:8000/v1/loop/run \
   -H "Content-Type: application/json" \
-  -d '{"task": "Hello"}'
+  -d '{"task": "Hello"}' | jq -r '"Response: \(.response)\n\nEvaluation:\n\(.evaluations[0].evaluation)"'
 ```
 
 ### OpenAPI

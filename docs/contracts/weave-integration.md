@@ -82,10 +82,11 @@ async def arun(self, task: str) -> AgentLoopResult:
 ```
 
 **Important:**
-- `call_display_name` must be a callable, not a string
+- `call_display_name` accepts either a string or a callable (`str | CallDisplayNameFunc`)
+- For static names, pass a string directly: `call_display_name="My Operation"`
+- For dynamic names, pass a callable that receives a `Call` object
 - Prefer named functions over lambdas for clarity and better stack traces
-- The callable receives a `Call` object; access inputs via `call.inputs`
-- Access other metadata via `call.func_name`, `call.attributes`, etc.
+- When using a callable, access inputs via `call.inputs`, metadata via `call.func_name`, etc.
 
 **Source:** https://docs.wandb.ai/weave/guides/tracking/ops
 
