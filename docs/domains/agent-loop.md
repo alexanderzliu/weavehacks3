@@ -61,11 +61,11 @@ See `AGENTS.md` ([AR1a-e], [LG1a-d], [WV1a-d]).
 
 ## LLM Calls Per Request
 
-| Scenario | Agent | Evaluator | Ranker | Decider | Total |
-|----------|-------|-----------|--------|---------|-------|
-| Simple (early exit) | 1 | 1 | 1 | 0 | **3** |
-| With tools (1 iter) | 1+ | 1 | 1 | 0 | **3+** |
-| Max iterations (5) | 5 | 5 | 5 | 1 | **16** |
+| Scenario            | Agent | Evaluator | Ranker | Decider |  Total  |
+|---------------------|--------|--------|--------- |-------------------|
+| Simple (early exit) |   1    |     1  |      1   |    0    | **3**   |
+| With tools (1 iter) |   1+   |     1  |      1   |    0    | **3+**  |
+| Max iterations  (5) |    5   |     5  |      5   |    1    | **16**  |
 
 ## Domain Concepts
 
