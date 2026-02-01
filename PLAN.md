@@ -72,12 +72,29 @@ A full-stack application where AI agents play the social deduction game Mafia, f
 
 - **Visualization Components** (`lib/components/`)
   - `RoundTable.svelte` - Circular poker table with player positions
+    - Fluid responsive sizing (400-850px based on container)
+    - Dynamic player positioning with ResizeObserver
+    - Scaled wooden ring and felt visuals
   - `PlayerSeat.svelte` - Player avatars with role indicators
+    - Proportionally scaled sizing (avatar, name tag, role label)
+    - Role-specific colored borders and backgrounds
+    - R.I.P markers for dead players
+    - Proper z-index layering above table surface
   - `SpeechBubble.svelte` - Animated speech display
   - `VoteArrow.svelte` - Vote visualization between players
   - `PhaseIndicator.svelte` - Day/night phase display
   - `ChatLog.svelte` - Scrolling event log
-  - `GameStateDiagram.svelte` - Game state visualization
+  - `CheatsheetTooltip.svelte` - Hover tooltip showing player cheatsheet
+
+---
+
+## Recent Updates
+
+### Round Table UI Improvements (Latest)
+- **Fluid Responsive Layout**: Table now scales dynamically between 400-850px based on available container space, eliminating wasted black margins
+- **Improved Readability**: Larger player cards (80px avatars), bigger name tags (0.85rem), and role labels (0.8rem)
+- **Fixed Clipping Issues**: Players positioned at 36% radius to keep all labels within bounds; proper z-index layering ensures cards render above table surface
+- **Cheatsheet Tooltips**: Hover over any player to see their cheatsheet summary (fetched on demand)
 
 ---
 
