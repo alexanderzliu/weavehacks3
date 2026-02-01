@@ -18,7 +18,7 @@ from game.prompts import (
     SPEECH_SYSTEM_PROMPT,
     VOTE_SYSTEM_PROMPT,
 )
-from game.tts import tts_client
+from game.tts import TTSError, tts_client
 from models.schemas import (
     ActorNightChoice,
     ActorSpeech,
@@ -298,8 +298,13 @@ class GameRunner:
             print(f"LLM ERROR (_player_speech) for {player['name']}: {e}")
             content = "I have nothing to add at this time."
 
-        # Generate TTS audio (silent failure)
-        audio_base64 = await tts_client.generate_speech(content, player["name"])
+        # Generate TTS audio (optional - graceful skip if not configured or fails)
+        audio_base64: str | None = None
+        if tts_client.is_configured():
+            try:
+                audio_base64 = await tts_client.generate_speech(content, player["name"])
+            except TTSError:
+                pass  # TTS is optional enhancement; continue without audio
 
         # Record in discussion
         self._day_discussion.append(f"{player['name']}: {content}")

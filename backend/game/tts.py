@@ -1,12 +1,21 @@
 """Cartesia TTS client with lazy init and voice mapping."""
 
 import base64
+import logging
 
 from cartesia import AsyncCartesia
 
 from config import get_settings
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+class TTSError(Exception):
+    """TTS generation failed."""
+
+    pass
+
 
 # Voice mapping: player name -> Cartesia voice ID
 # Uses diverse voices from Cartesia's library
@@ -24,7 +33,10 @@ DEFAULT_VOICE_ID = "a167e0f3-df7e-4d52-a9c3-f949145efdab"  # Blake - Helpful Age
 
 
 class TTSClient:
-    """Lazy-init async Cartesia TTS client."""
+    """Lazy-init async Cartesia TTS client.
+
+    TTS is an optional enhancement - callers handle TTSError gracefully.
+    """
 
     def __init__(self):
         self._client: AsyncCartesia | None = None
@@ -34,16 +46,23 @@ class TTSClient:
             self._client = AsyncCartesia(api_key=settings.CARTESIA_API_KEY)
         return self._client
 
-    async def generate_speech(self, text: str, player_name: str) -> str | None:
-        """Generate TTS audio, return base64 string or None on failure."""
+    def is_configured(self) -> bool:
+        """Check if TTS is configured (API key present)."""
+        return bool(settings.CARTESIA_API_KEY)
+
+    async def generate_speech(self, text: str, player_name: str) -> str:
+        """Generate TTS audio, return base64 string.
+
+        Raises:
+            TTSError: If TTS is not configured or generation fails.
+        """
         if not settings.CARTESIA_API_KEY:
-            return None
+            raise TTSError("CARTESIA_API_KEY not configured")
 
         voice_id = VOICE_MAP.get(player_name, DEFAULT_VOICE_ID)
 
         try:
             client = self._get_client()
-            # Collect chunks into a list (efficient), then join once
             chunks: list[bytes] = []
             async for chunk in client.tts.bytes(
                 model_id="sonic-2",
@@ -59,9 +78,11 @@ class TTSClient:
 
             audio_bytes = b"".join(chunks)
             return base64.b64encode(audio_bytes).decode("utf-8")
+        except TTSError:
+            raise
         except Exception as e:
-            print(f"TTS ERROR for {player_name}: {e}")
-            return None
+            logger.warning("TTS generation failed for %s: %s", player_name, e)
+            raise TTSError(f"TTS generation failed: {e}") from e
 
 
 # Global singleton
