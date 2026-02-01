@@ -11,6 +11,7 @@ from db import crud
 from db.database import get_db_session
 from game.reflection import ReflectionPipeline
 from game.runner import GameRunner, assign_roles
+from models.protocols import EventBroadcaster, NullBroadcaster
 from models.schemas import (
     EventType,
     GameEvent,
@@ -18,7 +19,6 @@ from models.schemas import (
     SeriesStatus,
     Visibility,
 )
-from websocket.manager import ws_manager
 
 
 def _series_display_name(call: Call) -> str:
@@ -29,8 +29,14 @@ def _series_display_name(call: Call) -> str:
 
 
 @weave.op(call_display_name=_series_display_name)
-async def run_series(series_id: str, series_name: str = "series") -> None:
+async def run_series(
+    series_id: str,
+    series_name: str = "series",
+    broadcaster: EventBroadcaster | None = None,
+) -> None:
     """Run a complete series of games with reflection."""
+    bc = broadcaster or NullBroadcaster()
+
     # Load series data
     async with get_db_session() as db:
         series = await crud.get_series_with_games(db, series_id)
@@ -43,7 +49,7 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
     base_seed = series.random_seed
 
     # Broadcast initial status
-    await ws_manager.broadcast_series_status(
+    await bc.broadcast_series_status(
         series_id,
         SeriesStatus.IN_PROGRESS.value,
         0,
@@ -67,7 +73,7 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
                     current_game_number=game_number,
                 )
 
-            await ws_manager.broadcast_series_status(
+            await bc.broadcast_series_status(
                 series_id,
                 SeriesStatus.IN_PROGRESS.value,
                 game_number,
@@ -96,7 +102,7 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
             await assign_roles(game_id, player_ids, fixed_roles, game_seed)
 
             # Run game
-            runner = GameRunner(game_id, series_id, game_seed)
+            runner = GameRunner(game_id, series_id, game_seed, broadcaster=bc)
             winner = await runner.run()
 
             # Check for stop request before reflection
@@ -105,7 +111,7 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
                 stop_after_reflection = series.status == SeriesStatus.STOP_REQUESTED.value
 
             # Run reflection for each player
-            await run_reflections(series_id, game_id, game_number, winner.value)
+            await run_reflections(series_id, game_id, game_number, winner.value, bc)
 
             if stop_after_reflection:
                 break
@@ -114,7 +120,7 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
         async with get_db_session() as db:
             await crud.update_series_status(db, series_id, SeriesStatus.COMPLETED)
 
-        await ws_manager.broadcast_series_status(
+        await bc.broadcast_series_status(
             series_id,
             SeriesStatus.COMPLETED.value,
             game_number,
@@ -134,7 +140,7 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
             )
             await crud.create_game_event(db, event)
 
-        await ws_manager.broadcast_event(series_id, event)
+        await bc.broadcast_event(series_id, event)
 
         # Mark as completed (with error)
         async with get_db_session() as db:
@@ -146,9 +152,10 @@ async def run_reflections(
     game_id: str,
     game_number: int,
     winner: str,
+    broadcaster: EventBroadcaster,
 ) -> None:
     """Run reflection pipeline for all players after a game."""
-    pipeline = ReflectionPipeline(series_id, game_id, game_number)
+    pipeline = ReflectionPipeline(series_id, game_id, game_number, broadcaster=broadcaster)
 
     # Get game players with their final state
     async with get_db_session() as db:
@@ -179,7 +186,7 @@ async def run_reflections(
             )
             async with get_db_session() as db:
                 await crud.create_game_event(db, event)
-            await ws_manager.broadcast_event(series_id, event)
+            await broadcaster.broadcast_event(series_id, event)
 
     # Run all reflections in parallel
     await asyncio.gather(*[reflect_player(gp) for gp in game_players])

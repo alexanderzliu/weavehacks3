@@ -85,13 +85,14 @@ async def start_series(
 
     # Import here to avoid circular imports
     from game.orchestrator import run_series
+    from websocket.manager import ws_manager
 
     # Update status
     await crud.update_series_status(db, series_id, SeriesStatus.IN_PROGRESS)
     await db.commit()
 
     # Start series in background
-    task = asyncio.create_task(run_series(series_id, series.name))
+    task = asyncio.create_task(run_series(series_id, series.name, broadcaster=ws_manager))
     _running_series[series_id] = task
 
     return {"message": "Series started", "series_id": series_id}

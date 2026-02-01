@@ -7,8 +7,6 @@ from uuid import uuid4
 
 import weave
 
-logger = logging.getLogger(__name__)
-
 from db import crud
 from db.database import get_db_session
 from game.llm import LLMError, llm_client
@@ -30,11 +28,15 @@ from models.schemas import (
     Cheatsheet,
     EventType,
     GameEvent,
+    GamePlayerDict,
     GamePhase,
     ModelProvider,
+    PlayerSnapshotDict,
     Visibility,
     Winner,
 )
+
+logger = logging.getLogger(__name__)
 
 # Role distribution per player count
 ROLE_DISTRIBUTION = {

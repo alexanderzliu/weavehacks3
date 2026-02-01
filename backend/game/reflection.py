@@ -265,7 +265,9 @@ class ReflectionPipeline:
             )
         except LLMError as e:
             # Keep current cheatsheet on curator failure
-            logger.warning("Curator failed for player %s, keeping current cheatsheet: %s", player_id, e)
+            logger.warning(
+                "Curator failed for player %s, keeping current cheatsheet: %s", player_id, e
+            )
             final_cheatsheet = current_cheatsheet
 
         # Persist new version

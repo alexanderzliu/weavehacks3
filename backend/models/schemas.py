@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, TypedDict
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -9,6 +9,48 @@ from pydantic import BaseModel, Field
 # require significant refactoring. This alias documents the intent while we
 # use runtime validation via EventType-specific payload schemas where needed.
 EventPayload: TypeAlias = dict[str, Any]
+
+
+# ============ TypedDict for Runtime Data ============
+
+
+class GamePlayerDict(TypedDict):
+    """Runtime player data used during game execution (dict-style access)."""
+
+    game_player_id: str
+    player_id: str
+    name: str
+    role: str
+    is_alive: bool
+    model_provider: "ModelProvider"
+    model_name: str
+    cheatsheet: "Cheatsheet"
+
+
+class PlayerSnapshotDict(TypedDict):
+    """Minimal player data for WebSocket snapshots."""
+
+    name: str
+    role: str
+    is_alive: bool
+
+
+class VoteRecordDict(TypedDict):
+    """Vote cast during a game."""
+
+    voter_id: str
+    voter_name: str
+    target_name: str
+
+
+class NightActionDict(TypedDict):
+    """Night action taken during a game."""
+
+    actor_id: str
+    action_type: str
+    target_name: str | None
+    result: str | None
+
 
 # ============ Enums ============
 
@@ -142,6 +184,27 @@ class PlayerState(BaseModel):
     model_name: str
     role: Role | None = None
     is_alive: bool = True
+
+
+class GamePlayerData(BaseModel):
+    """Runtime player data used during game execution."""
+
+    game_player_id: str
+    player_id: str
+    name: str
+    role: str
+    is_alive: bool
+    model_provider: ModelProvider
+    model_name: str
+    cheatsheet: Cheatsheet
+
+
+class PlayerSnapshot(BaseModel):
+    """Minimal player data for WebSocket snapshots."""
+
+    name: str
+    role: str
+    is_alive: bool
 
 
 # ============ Game Configuration ============

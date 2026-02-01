@@ -287,7 +287,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await ws_manager.send_error(websocket, f"Unknown message type: {msg_type}")
 
     except WebSocketDisconnect:
-        pass
+        logger.debug("WebSocket client disconnected")
     finally:
         if subscription:
             await ws_manager.disconnect(subscription)
