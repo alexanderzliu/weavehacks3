@@ -1,6 +1,4 @@
-import asyncio
 import logging
-from typing import Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -32,7 +32,7 @@ async def create_series(
     logger.info(
         "create_series request",
         extra={
-            "name": config.name,
+            "series_name": config.name,
             "total_games": config.total_games,
             "player_count": len(config.players),
             "providers": [p.model_provider for p in config.players],
@@ -84,7 +84,7 @@ async def create_series(
             exc_info=True,
         )
         await db.rollback()
-        raise HTTPException(status_code=500, detail="Internal server error creating series")
+        raise HTTPException(status_code=500, detail="Internal server error creating series") from e
 
 
 @router.post("/series/{series_id}/start")
