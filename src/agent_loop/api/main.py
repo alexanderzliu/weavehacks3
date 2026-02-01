@@ -26,16 +26,29 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 from agent_loop.api.exception_handlers import register_exception_handlers  # noqa: E402
 from agent_loop.api.routes import health_router, loop_router  # noqa: E402
+from agent_loop.application.agent import AgentLoop  # noqa: E402
 
 # Weave project name from env or default
 _WEAVE_PROJECT = os.getenv("WEAVE_PROJECT", "agent-loop")
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan handler."""
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan handler.
+
+    Initializes Weave and creates the shared AgentLoop instance.
+    See: https://fastapi.tiangolo.com/advanced/events/
+    """
     # Startup: Initialize Weave once for the application
     weave.init(_WEAVE_PROJECT)
+
+    # Create shared agent instance (compiled graph is thread-safe)
+    # See: https://github.com/langchain-ai/langchain/discussions/23630
+    app.state.agent = AgentLoop(
+        provider=os.getenv("AGENT_PROVIDER"),
+        model=os.getenv("AGENT_MODEL"),
+    )
+
     yield
     # Shutdown
 

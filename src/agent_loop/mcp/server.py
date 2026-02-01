@@ -3,6 +3,9 @@
 Exposes agent-loop as an MCP server for TUI tools like Claude Code.
 See [AP1b] for MCP requirements.
 
+MCP servers handle one client session via stdio. The agent is created
+once at startup and reused for all tool calls within that session.
+
 Contract: docs/api-contracts/openapi.md
 
 Sources:
@@ -11,9 +14,11 @@ Sources:
 """
 
 import asyncio
+import os
 import sys
 from typing import Any
 
+import weave
 from langchain_core.messages import ToolMessage
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -27,16 +32,36 @@ from agent_loop.mcp.exception_handlers import handle_tool_error
 # Create server
 server = Server("agent-loop")
 
-# Agent cache keyed by provider:model
-_agents: dict[str, AgentLoop] = {}
+
+class _ServerState:
+    """Container for server state to avoid global statements."""
+
+    agent: AgentLoop | None = None
 
 
-def _get_agent(provider: str | None = None, model: str | None = None) -> AgentLoop:
-    """Get or create an agent instance for the given provider/model combination."""
-    key = f"{provider or 'auto'}:{model or 'default'}"
-    if key not in _agents:
-        _agents[key] = AgentLoop(provider=provider, model=model)
-    return _agents[key]
+_state = _ServerState()
+
+
+def _get_agent() -> AgentLoop:
+    """Get the singleton agent instance.
+
+    Raises RuntimeError if called before init_server().
+    """
+    if _state.agent is None:
+        raise RuntimeError("Agent not initialized. Call init_server() first.")
+    return _state.agent
+
+
+def init_server() -> None:
+    """Initialize Weave and the agent. Called once at process start."""
+    # Initialize Weave once for this process
+    weave.init(os.getenv("WEAVE_PROJECT", "agent-loop"))
+
+    # Create the singleton agent
+    _state.agent = AgentLoop(
+        provider=os.getenv("AGENT_PROVIDER"),
+        model=os.getenv("AGENT_MODEL"),
+    )
 
 
 @server.list_tools()
@@ -172,9 +197,14 @@ async def run_server() -> None:
 
 
 def main() -> None:
-    """Entry point for MCP server."""
+    """Entry point for MCP server.
+
+    Initializes Weave and the agent once, then runs the stdio server.
+    """
     # Check for --stdio flag
     if "--stdio" in sys.argv or len(sys.argv) == 1:
+        # Initialize Weave and agent before running server
+        init_server()
         asyncio.run(run_server())
     else:
         sys.stderr.write("Usage: agent-loop-mcp [--stdio]\n")
