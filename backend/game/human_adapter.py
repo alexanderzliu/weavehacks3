@@ -6,19 +6,20 @@ a normal player to AI agents.
 """
 
 import asyncio
-from typing import Optional, Callable, Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from models.schemas import ActorSpeech, ActorVote, ActorNightChoice
-from game.tts import VOICE_MAP, DEFAULT_VOICE_ID
+from game.tts import DEFAULT_VOICE_ID, VOICE_MAP
+from models.schemas import ActorNightChoice, ActorSpeech, ActorVote
 
 
 @dataclass
 class HumanPlayerInfo:
     """Information about the human player."""
+
     player_id: str
     player_name: str
-    role: Optional[str] = None
+    role: str | None = None
 
 
 class HumanPlayerAdapter:
@@ -56,16 +57,16 @@ class HumanPlayerAdapter:
 
         # Speech waiting
         self._speech_event = asyncio.Event()
-        self._speech_text: Optional[str] = None
+        self._speech_text: str | None = None
         self._speech_timeout = 60.0
 
         # Vote waiting
         self._vote_event = asyncio.Event()
-        self._vote_choice: Optional[str] = None
+        self._vote_choice: str | None = None
 
         # Night action waiting
         self._night_action_event = asyncio.Event()
-        self._night_action_target: Optional[str] = None
+        self._night_action_target: str | None = None
 
     def set_pipeline(self, pipeline) -> None:
         """Set the voice pipeline for audio I/O."""
@@ -82,7 +83,7 @@ class HumanPlayerAdapter:
         """Check if the given player ID is the human player."""
         return player_id == self.player_id
 
-    async def get_speech(self, game_context: str) -> ActorSpeech:
+    async def get_speech(self, game_context: str) -> ActorSpeech:  # noqa: ARG002
         """Get speech from the human player.
 
         This is called by the game runner when it's the human's turn to speak.
@@ -99,11 +100,14 @@ class HumanPlayerAdapter:
         self._speech_text = None
 
         # Notify frontend that human should speak
-        await self._ws_notify("human_turn_start", {
-            "player_id": self.player_id,
-            "player_name": self.player_name,
-            "action": "speech",
-        })
+        await self._ws_notify(
+            "human_turn_start",
+            {
+                "player_id": self.player_id,
+                "player_name": self.player_name,
+                "action": "speech",
+            },
+        )
 
         # Wait for speech from pipeline or WebSocket
         if self._pipeline:
@@ -117,13 +121,16 @@ class HumanPlayerAdapter:
                     timeout=self._speech_timeout,
                 )
                 text = self._speech_text or "I have nothing to add at this time."
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 text = "I have nothing to add at this time."
 
         # Notify frontend that turn ended
-        await self._ws_notify("human_turn_end", {
-            "player_id": self.player_id,
-        })
+        await self._ws_notify(
+            "human_turn_end",
+            {
+                "player_id": self.player_id,
+            },
+        )
 
         return ActorSpeech(content=text, addressing=[])
 
@@ -140,11 +147,14 @@ class HumanPlayerAdapter:
         self._vote_choice = None
 
         # Notify frontend that human should vote
-        await self._ws_notify("human_vote_required", {
-            "player_id": self.player_id,
-            "player_name": self.player_name,
-            "valid_targets": valid_targets,
-        })
+        await self._ws_notify(
+            "human_vote_required",
+            {
+                "player_id": self.player_id,
+                "player_name": self.player_name,
+                "valid_targets": valid_targets,
+            },
+        )
 
         # Wait for vote via WebSocket
         try:
@@ -153,7 +163,7 @@ class HumanPlayerAdapter:
                 timeout=self._speech_timeout,
             )
             vote = self._vote_choice or "no_lynch"
-        except asyncio.TimeoutError:
+        except TimeoutError:
             vote = "no_lynch"
 
         return ActorVote(vote=vote, reasoning="Human player choice")
@@ -172,12 +182,15 @@ class HumanPlayerAdapter:
         self._night_action_target = None
 
         # Notify frontend that human needs to take night action
-        await self._ws_notify("human_night_action_required", {
-            "player_id": self.player_id,
-            "player_name": self.player_name,
-            "role": role,
-            "valid_targets": valid_targets,
-        })
+        await self._ws_notify(
+            "human_night_action_required",
+            {
+                "player_id": self.player_id,
+                "player_name": self.player_name,
+                "role": role,
+                "valid_targets": valid_targets,
+            },
+        )
 
         # Wait for action via WebSocket
         try:
@@ -186,7 +199,7 @@ class HumanPlayerAdapter:
                 timeout=self._speech_timeout,
             )
             target = self._night_action_target or valid_targets[0]
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Default to first valid target on timeout
             target = valid_targets[0] if valid_targets else ""
 

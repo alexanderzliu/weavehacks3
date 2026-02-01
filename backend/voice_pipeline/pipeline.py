@@ -9,24 +9,22 @@ and the game. It uses:
 """
 
 import asyncio
-from typing import Callable, Optional, Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import (
     Frame,
     TextFrame,
     TranscriptionFrame,
-    EndFrame,
-    TTSAudioRawFrame,
 )
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
-from pipecat.pipeline.task import PipelineTask, PipelineParams
+from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.cartesia.tts import CartesiaTTSService
-from pipecat.transports.daily.transport import DailyTransport, DailyParams
-from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.services.deepgram.stt import DeepgramSTTService
+from pipecat.transports.daily.transport import DailyParams, DailyTransport
 
 from config import get_settings
 
@@ -36,6 +34,7 @@ settings = get_settings()
 @dataclass
 class HumanSpeechResult:
     """Result of waiting for human speech."""
+
     text: str
     success: bool
     timed_out: bool = False
@@ -47,7 +46,7 @@ class TranscriptionCollector(FrameProcessor):
     def __init__(
         self,
         on_transcription: Callable[[str], Awaitable[None]],
-        on_speech_start: Optional[Callable[[], Awaitable[None]]] = None,
+        on_speech_start: Callable[[], Awaitable[None]] | None = None,
     ):
         super().__init__()
         self._on_transcription = on_transcription
@@ -58,13 +57,12 @@ class TranscriptionCollector(FrameProcessor):
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
 
-        if isinstance(frame, TranscriptionFrame):
+        if isinstance(frame, TranscriptionFrame) and frame.text:
             # Final transcription received
-            if frame.text:
-                self._current_transcript = frame.text
-                await self._on_transcription(frame.text)
-                self._current_transcript = ""
-                self._is_speaking = False
+            self._current_transcript = frame.text
+            await self._on_transcription(frame.text)
+            self._current_transcript = ""
+            self._is_speaking = False
 
         # Pass frame downstream
         await self.push_frame(frame, direction)
@@ -89,19 +87,19 @@ class MafiaVoicePipeline:
         self.room_token = room_token
         self.player_name = player_name
 
-        self._pipeline: Optional[Pipeline] = None
-        self._task: Optional[PipelineTask] = None
-        self._runner: Optional[PipelineRunner] = None
-        self._transport: Optional[DailyTransport] = None
-        self._tts: Optional[CartesiaTTSService] = None
+        self._pipeline: Pipeline | None = None
+        self._task: PipelineTask | None = None
+        self._runner: PipelineRunner | None = None
+        self._transport: DailyTransport | None = None
+        self._tts: CartesiaTTSService | None = None
 
         # Speech waiting
         self._speech_event = asyncio.Event()
-        self._speech_result: Optional[HumanSpeechResult] = None
+        self._speech_result: HumanSpeechResult | None = None
 
         # Callbacks
-        self._on_human_speech: Optional[Callable[[str], Awaitable[None]]] = None
-        self._on_interrupt: Optional[Callable[[], Awaitable[None]]] = None
+        self._on_human_speech: Callable[[str], Awaitable[None]] | None = None
+        self._on_interrupt: Callable[[], Awaitable[None]] | None = None
 
     async def start(self) -> None:
         """Start the voice pipeline and connect to Daily room."""
@@ -136,11 +134,13 @@ class MafiaVoicePipeline:
 
         # Build pipeline: transport -> STT -> collector
         # TTS output goes back through transport
-        self._pipeline = Pipeline([
-            self._transport.input(),
-            stt,
-            collector,
-        ])
+        self._pipeline = Pipeline(
+            [
+                self._transport.input(),
+                stt,
+                collector,
+            ]
+        )
 
         self._task = PipelineTask(
             self._pipeline,
@@ -194,7 +194,7 @@ class MafiaVoicePipeline:
                 text="",
                 success=False,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return HumanSpeechResult(
                 text="I have nothing to add at this time.",
                 success=True,
@@ -204,8 +204,8 @@ class MafiaVoicePipeline:
     async def queue_ai_speech(
         self,
         text: str,
-        voice_id: Optional[str] = None,
-        player_name: Optional[str] = None,
+        voice_id: str | None = None,
+        player_name: str | None = None,  # noqa: ARG002
     ) -> None:
         """Queue AI speech to be played to human.
 
@@ -246,8 +246,9 @@ async def create_daily_room() -> tuple[str, str]:
     Returns:
         Tuple of (room_url, room_token)
     """
-    import httpx
     import time
+
+    import httpx
 
     async with httpx.AsyncClient() as client:
         # Create room

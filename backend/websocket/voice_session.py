@@ -5,9 +5,8 @@ between the WebSocket connection, Pipecat pipeline, and game runner.
 """
 
 import asyncio
-from typing import Optional, Dict, Callable, Awaitable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import WebSocket
 
@@ -15,14 +14,15 @@ from fastapi import WebSocket
 @dataclass
 class VoiceSession:
     """A voice session for a human player."""
+
     session_id: str
     series_id: str
     player_id: str
     player_name: str
-    websocket: Optional[WebSocket] = None
-    room_url: Optional[str] = None
-    room_token: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    websocket: WebSocket | None = None
+    room_url: str | None = None
+    room_token: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     is_active: bool = True
 
 
@@ -37,8 +37,8 @@ class VoiceSessionManager:
     """
 
     def __init__(self):
-        self._sessions: Dict[str, VoiceSession] = {}  # series_id -> session
-        self._adapters: Dict[str, object] = {}  # series_id -> HumanPlayerAdapter
+        self._sessions: dict[str, VoiceSession] = {}  # series_id -> session
+        self._adapters: dict[str, object] = {}  # series_id -> HumanPlayerAdapter
         self._lock = asyncio.Lock()
 
     async def create_session(
@@ -46,7 +46,7 @@ class VoiceSessionManager:
         series_id: str,
         player_id: str,
         player_name: str,
-        websocket: Optional[WebSocket] = None,
+        websocket: WebSocket | None = None,
     ) -> VoiceSession:
         """Create a voice session for a human player.
 
@@ -60,6 +60,7 @@ class VoiceSessionManager:
             The created VoiceSession
         """
         from uuid import uuid4
+
         from voice_pipeline.pipeline import create_daily_room
 
         async with self._lock:
@@ -86,7 +87,7 @@ class VoiceSessionManager:
             self._sessions[series_id] = session
             return session
 
-    async def get_session(self, series_id: str) -> Optional[VoiceSession]:
+    async def get_session(self, series_id: str) -> VoiceSession | None:
         """Get the voice session for a series."""
         async with self._lock:
             return self._sessions.get(series_id)
