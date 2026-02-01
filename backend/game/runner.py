@@ -1,11 +1,13 @@
 """Game runner - executes a single Mafia game."""
 
-import contextlib
+import logging
 import random
 from datetime import datetime
 from uuid import uuid4
 
 import weave
+
+logger = logging.getLogger(__name__)
 
 from db import crud
 from db.database import get_db_session
@@ -20,6 +22,7 @@ from game.prompts import (
     VOTE_SYSTEM_PROMPT,
 )
 from game.tts import TTSError, tts_client
+from models.protocols import EventBroadcaster, NullBroadcaster
 from models.schemas import (
     ActorNightChoice,
     ActorSpeech,
@@ -32,7 +35,6 @@ from models.schemas import (
     Visibility,
     Winner,
 )
-from websocket.manager import ws_manager
 
 # Role distribution per player count
 ROLE_DISTRIBUTION = {
@@ -45,10 +47,17 @@ ROLE_DISTRIBUTION = {
 class GameRunner:
     """Runs a single game of Mafia."""
 
-    def __init__(self, game_id: str, series_id: str, random_seed: int | None = None):
+    def __init__(
+        self,
+        game_id: str,
+        series_id: str,
+        random_seed: int | None = None,
+        broadcaster: EventBroadcaster | None = None,
+    ):
         self.game_id = game_id
         self.series_id = series_id
         self.random = random.Random(random_seed)
+        self._broadcaster = broadcaster or NullBroadcaster()
         self._game_players: list[dict] = []  # Cached player data
         self._day_discussion: list[str] = []  # Current day's speeches
         self._day_number = 0
@@ -77,7 +86,7 @@ class GameRunner:
         async with get_db_session() as db:
             await crud.create_game_event(db, event)
 
-        await ws_manager.broadcast_event(self.series_id, event)
+        await self._broadcaster.broadcast_event(self.series_id, event)
         return event
 
     async def _load_game_players(self) -> list[dict]:
@@ -242,7 +251,7 @@ class GameRunner:
 
         # Broadcast snapshot (use names for frontend compatibility)
         alive = self._get_alive_players()
-        await ws_manager.broadcast_snapshot(
+        await self._broadcaster.broadcast_snapshot(
             self.series_id,
             self.game_id,
             [p["name"] for p in alive],
@@ -296,14 +305,16 @@ class GameRunner:
             )
             content = speech.content
         except LLMError as e:
-            print(f"LLM ERROR (_player_speech) for {player['name']}: {e}")
+            logger.warning("LLM failed for %s speech, using fallback: %s", player["name"], e)
             content = "I have nothing to add at this time."
 
-        # Generate TTS audio (optional - graceful skip if not configured or fails)
+        # Generate TTS audio (optional enhancement - log failures but continue)
         audio_base64: str | None = None
         if tts_client.is_configured():
-            with contextlib.suppress(TTSError):
+            try:
                 audio_base64 = await tts_client.generate_speech(content, player["name"])
+            except TTSError as e:
+                logger.debug("TTS unavailable for %s: %s", player["name"], e)
 
         # Record in discussion
         self._day_discussion.append(f"{player['name']}: {content}")
@@ -354,9 +365,9 @@ class GameRunner:
                 ):
                     vote = self.random.choice(alive_names + ["no_lynch"])
         except LLMError as e:
-            print(f"LLM ERROR (_player_vote) for {player['name']}: {e}")
+            logger.warning("LLM failed for %s vote, using random fallback: %s", player["name"], e)
             vote = self.random.choice(alive_names + ["no_lynch"])
-            reasoning = "fallback"
+            reasoning = "LLM unavailable - random selection"
 
         target_id = None
         if vote != "no_lynch":
@@ -424,7 +435,7 @@ class GameRunner:
         # Send updated snapshot after lynch
         if lynched_player:
             alive = self._get_alive_players()
-            await ws_manager.broadcast_snapshot(
+            await self._broadcaster.broadcast_snapshot(
                 self.series_id,
                 self.game_id,
                 [p["name"] for p in alive],
@@ -448,7 +459,7 @@ class GameRunner:
 
         # Broadcast snapshot (use names for frontend compatibility)
         alive = self._get_alive_players()
-        await ws_manager.broadcast_snapshot(
+        await self._broadcaster.broadcast_snapshot(
             self.series_id,
             self.game_id,
             [p["name"] for p in alive],
@@ -494,7 +505,7 @@ class GameRunner:
         # Send updated snapshot after night kill
         if killed_player:
             alive = self._get_alive_players()
-            await ws_manager.broadcast_snapshot(
+            await self._broadcaster.broadcast_snapshot(
                 self.series_id,
                 self.game_id,
                 [p["name"] for p in alive],
@@ -537,9 +548,9 @@ class GameRunner:
             if target not in valid_targets:
                 target = self.random.choice(valid_targets) if valid_targets else None
         except LLMError as e:
-            print(f"LLM ERROR (_mafia_kill) for {player['name']}: {e}")
+            logger.warning("LLM failed for %s mafia kill, using random: %s", player["name"], e)
             target = self.random.choice(valid_targets) if valid_targets else None
-            reasoning = "fallback"
+            reasoning = "LLM unavailable - random selection"
 
         if target:
             target_player = self._get_player_by_name(target)
@@ -583,9 +594,9 @@ class GameRunner:
             if target not in valid_targets:
                 target = self.random.choice(valid_targets)
         except LLMError as e:
-            print(f"LLM ERROR (_doctor_save) for {player['name']}: {e}")
+            logger.warning("LLM failed for %s doctor save, using random: %s", player["name"], e)
             target = self.random.choice(valid_targets)
-            reasoning = "fallback"
+            reasoning = "LLM unavailable - random selection"
 
         target_player = self._get_player_by_name(target)
         await self._emit_event(
@@ -630,9 +641,9 @@ class GameRunner:
             if target not in valid_targets:
                 target = self.random.choice(valid_targets) if valid_targets else None
         except LLMError as e:
-            print(f"LLM ERROR (_deputy_investigate) for {player['name']}: {e}")
+            logger.warning("LLM failed for %s investigation, using random: %s", player["name"], e)
             target = self.random.choice(valid_targets) if valid_targets else None
-            reasoning = "fallback"
+            reasoning = "LLM unavailable - random selection"
 
         if target:
             target_player = self._get_player_by_name(target)

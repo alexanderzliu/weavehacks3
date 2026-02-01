@@ -5,11 +5,10 @@ from uuid import uuid4
 
 import weave
 
-logger = logging.getLogger(__name__)
-
 from db import crud
 from db.database import get_db_session
 from game.llm import LLMError, llm_client
+from models.protocols import EventBroadcaster, NullBroadcaster
 from models.schemas import (
     Cheatsheet,
     CheatsheetItem,
@@ -20,7 +19,8 @@ from models.schemas import (
     ReflectorOutput,
     Visibility,
 )
-from websocket.manager import ws_manager
+
+logger = logging.getLogger(__name__)
 
 REFLECTOR_SYSTEM_PROMPT = """You are analyzing a completed Mafia game for player {player_name}.
 Your job is to identify lessons learned and suggest updates to their strategy cheatsheet.
@@ -121,10 +121,17 @@ NOTE: For newly added items, include the source_event from the reflector's delta
 class ReflectionPipeline:
     """Runs reflection after each game to update player cheatsheets."""
 
-    def __init__(self, series_id: str, game_id: str, game_number: int):
+    def __init__(
+        self,
+        series_id: str,
+        game_id: str,
+        game_number: int,
+        broadcaster: EventBroadcaster | None = None,
+    ):
         self.series_id = series_id
         self.game_id = game_id
         self.game_number = game_number
+        self._broadcaster = broadcaster or NullBroadcaster()
 
     async def _emit_event(
         self,
@@ -147,7 +154,7 @@ class ReflectionPipeline:
         async with get_db_session() as db:
             await crud.create_game_event(db, event)
 
-        await ws_manager.broadcast_event(self.series_id, event)
+        await self._broadcaster.broadcast_event(self.series_id, event)
 
     async def _get_game_log(self) -> str:
         """Get the full game log for reflection."""
