@@ -31,8 +31,8 @@
     width: calc(28px * var(--scale, 1));
     height: calc(28px * var(--scale, 1));
     border-radius: 50%;
-    background: #141412;
-    border: 2px solid #a68829;
+    background: var(--noir-charcoal, #141412);
+    border: 2px solid var(--noir-gold-dim, #a68829);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -41,33 +41,33 @@
     animation: badgeAppear 0.4s ease-out backwards;
     animation-delay: calc(var(--index, 0) * 0.08s);
     cursor: default;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.4s ease, border-color 0.4s ease;
   }
 
   .vote-badge:hover {
     transform: scale(1.15);
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+    box-shadow: 0 4px 12px var(--accent-glow, rgba(212, 175, 55, 0.4));
   }
 
   .vote-badge.mafia {
-    border-color: #c41e3a;
-    box-shadow: 0 2px 6px rgba(196, 30, 58, 0.4);
+    border-color: var(--color-mafia, #c41e3a);
+    box-shadow: 0 2px 6px var(--color-mafia-glow, rgba(196, 30, 58, 0.4));
   }
 
   .vote-badge.doctor {
-    border-color: #228b22;
-    box-shadow: 0 2px 6px rgba(34, 139, 34, 0.4);
+    border-color: var(--color-doctor, #228b22);
+    box-shadow: 0 2px 6px var(--color-doctor-glow, rgba(34, 139, 34, 0.4));
   }
 
   .vote-badge.deputy {
-    border-color: #6b3fa0;
-    box-shadow: 0 2px 6px rgba(107, 63, 160, 0.4);
+    border-color: var(--color-detective, #6b3fa0);
+    box-shadow: 0 2px 6px var(--color-detective-glow, rgba(107, 63, 160, 0.4));
   }
 
   .vote-badge.villager,
   .vote-badge.townsperson {
-    border-color: #b8860b;
-    box-shadow: 0 2px 6px rgba(184, 134, 11, 0.4);
+    border-color: var(--color-villager, #b8860b);
+    box-shadow: 0 2px 6px var(--color-villager-glow, rgba(184, 134, 11, 0.4));
   }
 
   .badge-emoji {

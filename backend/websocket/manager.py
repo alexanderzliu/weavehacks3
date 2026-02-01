@@ -1,10 +1,16 @@
 """WebSocket connection manager for live game streaming."""
 
 import asyncio
+import logging
 from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+
+# Exceptions that indicate a closed/broken WebSocket connection
+WebSocketSendError = (WebSocketDisconnect, RuntimeError, ConnectionError)
 
 from db import crud
 from db.database import get_db_session
@@ -118,9 +124,9 @@ class ConnectionManager:
                             payload=event.model_dump(mode="json"),
                         ),
                     )
-                except Exception:
-                    # Connection might be closed
-                    pass
+                except WebSocketSendError:
+                    # Connection closed - will be cleaned up on next disconnect
+                    logger.debug("WebSocket send failed for subscription %s", sub.id)
 
     async def broadcast_series_status(
         self,
@@ -145,8 +151,8 @@ class ConnectionManager:
         for sub in subscriptions:
             try:
                 await self._send_message(sub.websocket, message)
-            except Exception:
-                pass
+            except WebSocketSendError:
+                logger.debug("WebSocket send failed for subscription %s", sub.id)
 
     async def broadcast_snapshot(
         self,
@@ -174,8 +180,8 @@ class ConnectionManager:
         for sub in subscriptions:
             try:
                 await self._send_message(sub.websocket, message)
-            except Exception:
-                pass
+            except WebSocketSendError:
+                logger.debug("WebSocket send failed for subscription %s", sub.id)
 
     async def send_error(
         self, websocket: WebSocket, message: str, details: dict | None = None
