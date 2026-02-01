@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>Mafia ACE - AI Agents Playing Mafia</title>
+	<title>Mafia ACE - Agents Learning the Metagame of Mafia</title>
 </svelte:head>
 
 <div class="app">
@@ -27,7 +27,7 @@
 			</a>
 			<div class="tagline-wrapper">
 				<span class="tagline-diamond"></span>
-				<span class="tagline">AI Agents Playing Mafia</span>
+				<span class="tagline">Agents Learning the Metagame of Mafia</span>
 				<span class="tagline-diamond"></span>
 			</div>
 		</nav>
