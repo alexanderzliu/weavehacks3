@@ -200,4 +200,82 @@
 		opacity: 0.4;
 		text-decoration: line-through;
 	}
+
+	/* Speech input styles */
+	.action-panel.speech {
+		border-color: var(--success);
+		box-shadow:
+			0 10px 40px rgba(0, 0, 0, 0.5),
+			0 0 20px rgba(80, 200, 120, 0.2);
+	}
+
+	.action-panel.speech .panel-header h3 {
+		color: var(--success);
+	}
+
+	.speech-input {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		min-width: 400px;
+	}
+
+	.speech-input textarea {
+		width: 100%;
+		padding: 0.75rem;
+		background: var(--bg-primary);
+		border: 1px solid var(--border-gold);
+		border-radius: 4px;
+		color: var(--text-cream);
+		font-family: var(--font-body);
+		font-size: 0.95rem;
+		line-height: 1.5;
+		resize: vertical;
+		min-height: 80px;
+	}
+
+	.speech-input textarea:focus {
+		outline: none;
+		border-color: var(--success);
+		box-shadow: 0 0 10px rgba(80, 200, 120, 0.2);
+	}
+
+	.speech-input textarea::placeholder {
+		color: var(--text-muted);
+	}
+
+	.send-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1.5rem;
+		background: var(--success);
+		border: none;
+		border-radius: 4px;
+		color: var(--bg-primary);
+		font-family: var(--font-heading);
+		font-size: 0.85rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		align-self: flex-end;
+	}
+
+	.send-btn:hover:not(:disabled) {
+		background: #5dd97a;
+		transform: translateY(-2px);
+	}
+
+	.send-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.send-btn svg {
+		width: 16px;
+		height: 16px;
+	}
 </style>
