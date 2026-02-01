@@ -36,6 +36,7 @@ export const connectionState: Writable<ConnectionState> = writable({
 export const events: Writable<GameEvent[]> = writable([]);
 export const snapshot: Writable<GameSnapshot | null> = writable(null);
 export const seriesProgress: Writable<SeriesProgress | null> = writable(null);
+export const audioEnabled: Writable<boolean> = writable(false);
 
 // Derived stores for round table UI
 export const currentSpeaker = derived(events, ($events) => {
@@ -72,6 +73,7 @@ export const currentVotes = derived(events, ($events) => {
 let ws: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let currentSeriesId: string | null = null;
+let pendingAudioEnabled: boolean = false; // Track audio state to send after subscription
 
 export function connect(seriesId: string): void {
 	// Clean up existing connection
@@ -171,6 +173,16 @@ function handleMessage(message: WSMessage): void {
 				...s,
 				subscribedTo: message.payload.series_id
 			}));
+			// Send audio preference immediately after subscription
+			if (pendingAudioEnabled && ws && ws.readyState === WebSocket.OPEN) {
+				console.log('Sending audio preference after subscription:', pendingAudioEnabled);
+				ws.send(
+					JSON.stringify({
+						type: 'set_audio',
+						payload: { enabled: pendingAudioEnabled }
+					})
+				);
+			}
 			break;
 
 		case 'event':
@@ -193,6 +205,10 @@ function handleMessage(message: WSMessage): void {
 			}));
 			break;
 
+		case 'audio_updated':
+			audioEnabled.set(message.payload.enabled);
+			break;
+
 		default:
 			console.warn('Unknown message type:', message);
 	}
@@ -200,4 +216,18 @@ function handleMessage(message: WSMessage): void {
 
 export function clearEvents(): void {
 	events.set([]);
+}
+
+export function setAudioEnabled(enabled: boolean): void {
+	audioEnabled.set(enabled);
+	pendingAudioEnabled = enabled; // Track for sending after (re)connection
+	if (ws && ws.readyState === WebSocket.OPEN) {
+		console.log('Sending audio preference:', enabled);
+		ws.send(
+			JSON.stringify({
+				type: 'set_audio',
+				payload: { enabled }
+			})
+		);
+	}
 }

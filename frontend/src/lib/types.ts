@@ -13,7 +13,7 @@ export type Role = 'mafia' | 'doctor' | 'deputy' | 'townsperson';
 
 export type GamePhase = 'pending' | 'day' | 'voting' | 'night' | 'completed';
 
-export type SeriesStatus = 'pending' | 'in_progress' | 'stop_requested' | 'completed';
+export type SeriesStatus = 'pending' | 'in_progress' | 'stop_requested' | 'stopped' | 'completed';
 
 export type Visibility = 'public' | 'mafia' | 'private' | 'viewer';
 
@@ -174,7 +174,14 @@ export interface WSSubscribed {
 	};
 }
 
-export type WSMessage = WSEvent | WSSeriesStatus | WSSnapshot | WSError | WSSubscribed;
+export interface WSAudioUpdated {
+	type: 'audio_updated';
+	payload: {
+		enabled: boolean;
+	};
+}
+
+export type WSMessage = WSEvent | WSSeriesStatus | WSSnapshot | WSError | WSSubscribed | WSAudioUpdated;
 
 // Cheatsheet history types
 export interface CheatsheetVersion {

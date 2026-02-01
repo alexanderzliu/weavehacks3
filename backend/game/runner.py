@@ -344,14 +344,17 @@ class GameRunner:
             logger.warning("LLM failed for %s speech, using fallback: %s", player["name"], e)
             content = "I have nothing to add at this time."
 
-        # Generate TTS audio (optional enhancement - log failures but continue)
+        # Generate TTS audio only if configured AND at least one client wants it
         audio_base64: str | None = None
-        if tts_client.is_configured():
+        wants_audio = self._broadcaster.has_audio_listeners(self.series_id)
+        if tts_client.is_configured() and wants_audio:
             try:
                 audio_base64 = await tts_client.generate_speech(content, player["name"])
                 logger.info("TTS generated for %s (%d chars)", player["name"], len(audio_base64))
             except TTSError as e:
                 logger.warning("TTS generation failed for %s: %s", player["name"], e)
+        elif not wants_audio:
+            logger.debug("TTS skipped for %s - no audio listeners", player["name"])
 
         # Record in discussion
         self._day_discussion.append(f"{player['name']}: {content}")

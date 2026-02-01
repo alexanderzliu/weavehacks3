@@ -12,6 +12,10 @@ class EventBroadcaster(Protocol):
         """Broadcast a game event."""
         ...
 
+    def has_audio_listeners(self, series_id: str) -> bool:
+        """Check if any subscriber wants audio for this series."""
+        ...
+
     async def broadcast_series_status(
         self,
         series_id: str,
@@ -40,6 +44,9 @@ class NullBroadcaster:
 
     async def broadcast_event(self, series_id: str, event: GameEvent) -> None:
         pass
+
+    def has_audio_listeners(self, _series_id: str) -> bool:
+        return False
 
     async def broadcast_series_status(
         self,

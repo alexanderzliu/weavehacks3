@@ -1,11 +1,15 @@
 <script lang="ts">
 	import '../app.css';
 	import { browser } from '$app/environment';
+	import { audioEnabled, setAudioEnabled } from '$lib/websocket';
 
 	let { children } = $props();
 
 	// Theme state - persisted to localStorage
 	let isLightTheme = $state(false);
+
+	// Audio state - synced with store and localStorage
+	let isAudioEnabled = $state(false);
 
 	// Initialize theme from localStorage on mount
 	$effect(() => {
@@ -21,7 +25,22 @@
 				// No preference saved, use system preference (dark by default for this app)
 				isLightTheme = !prefersDark;
 			}
+
+			// Initialize audio preference from localStorage
+			const savedAudio = localStorage.getItem('mafia-ace-audio');
+			if (savedAudio === 'true') {
+				isAudioEnabled = true;
+				setAudioEnabled(true);
+			}
 		}
+	});
+
+	// Sync with store changes
+	$effect(() => {
+		const unsubscribe = audioEnabled.subscribe((value) => {
+			isAudioEnabled = value;
+		});
+		return unsubscribe;
 	});
 
 	// Apply theme class to document root
@@ -39,6 +58,14 @@
 		isLightTheme = !isLightTheme;
 		if (browser) {
 			localStorage.setItem('mafia-ace-theme', isLightTheme ? 'light' : 'dark');
+		}
+	}
+
+	function toggleAudio() {
+		isAudioEnabled = !isAudioEnabled;
+		setAudioEnabled(isAudioEnabled);
+		if (browser) {
+			localStorage.setItem('mafia-ace-audio', isAudioEnabled ? 'true' : 'false');
 		}
 	}
 </script>
@@ -69,29 +96,57 @@
 				<span class="tagline">Agents Learning the Metagame of Mafia</span>
 				<span class="tagline-diamond"></span>
 			</div>
-			<button
-				class="theme-toggle"
-				onclick={toggleTheme}
-				aria-label={isLightTheme ? 'Switch to dark theme' : 'Switch to light theme'}
-				title={isLightTheme ? 'Switch to dark theme' : 'Switch to light theme'}
-			>
-				<span class="toggle-track">
-					<span class="toggle-thumb" class:light={isLightTheme}>
-						{#if isLightTheme}
-							<!-- Sun icon -->
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<circle cx="12" cy="12" r="5"/>
-								<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-							</svg>
-						{:else}
-							<!-- Moon icon -->
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-							</svg>
-						{/if}
+			<div class="header-controls">
+				<button
+					class="audio-toggle"
+					onclick={toggleAudio}
+					aria-label={isAudioEnabled ? 'Disable audio' : 'Enable audio'}
+					title={isAudioEnabled ? 'Disable audio' : 'Enable audio'}
+				>
+					<span class="toggle-track">
+						<span class="toggle-thumb" class:enabled={isAudioEnabled}>
+							{#if isAudioEnabled}
+								<!-- Speaker on icon -->
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+									<path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+									<path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+								</svg>
+							{:else}
+								<!-- Speaker off icon -->
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+									<line x1="23" y1="9" x2="17" y2="15"/>
+									<line x1="17" y1="9" x2="23" y2="15"/>
+								</svg>
+							{/if}
+						</span>
 					</span>
-				</span>
-			</button>
+				</button>
+				<button
+					class="theme-toggle"
+					onclick={toggleTheme}
+					aria-label={isLightTheme ? 'Switch to dark theme' : 'Switch to light theme'}
+					title={isLightTheme ? 'Switch to dark theme' : 'Switch to light theme'}
+				>
+					<span class="toggle-track">
+						<span class="toggle-thumb" class:light={isLightTheme}>
+							{#if isLightTheme}
+								<!-- Sun icon -->
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<circle cx="12" cy="12" r="5"/>
+									<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+								</svg>
+							{:else}
+								<!-- Moon icon -->
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+								</svg>
+							{/if}
+						</span>
+					</span>
+				</button>
+			</div>
 		</nav>
 	</header>
 
@@ -293,12 +348,19 @@
 	}
 
 	/* ============================================
-	   RESPONSIVE
+	   HEADER CONTROLS - Toggle Buttons Container
 	   ============================================ */
+	.header-controls {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
 	/* ============================================
-	   THEME TOGGLE - Art Deco Switch
+	   TOGGLE BUTTONS - Art Deco Switch (shared)
 	   ============================================ */
-	.theme-toggle {
+	.theme-toggle,
+	.audio-toggle {
 		all: unset;
 		cursor: pointer;
 		padding: 0;
@@ -361,6 +423,22 @@
 		color: var(--button-text);
 	}
 
+	/* Audio toggle enabled state */
+	.toggle-thumb.enabled {
+		transform: translateX(24px);
+	}
+
+	.toggle-thumb.enabled svg {
+		color: var(--button-text);
+	}
+
+	.audio-toggle:hover .toggle-track {
+		border-color: var(--accent);
+		box-shadow:
+			inset 0 2px 4px rgba(0, 0, 0, 0.2),
+			0 0 12px var(--accent-glow);
+	}
+
 	/* ============================================
 	   RESPONSIVE
 	   ============================================ */
@@ -390,7 +468,7 @@
 			font-size: 0.75rem;
 		}
 
-		.theme-toggle {
+		.header-controls {
 			position: absolute;
 			top: 1rem;
 			right: 1rem;

@@ -32,6 +32,7 @@ class Subscription:
         viewer_mode: bool = True,
         player_id: str | None = None,
         player_role: str | None = None,
+        audio_enabled: bool = False,
     ):
         self.id = str(uuid4())
         self.websocket = websocket
@@ -39,6 +40,7 @@ class Subscription:
         self.viewer_mode = viewer_mode
         self.player_id = player_id
         self.player_role = player_role
+        self.audio_enabled = audio_enabled
 
 
 class ConnectionManager:
@@ -71,6 +73,7 @@ class ConnectionManager:
         viewer_mode: bool = True,
         player_id: str | None = None,
         player_role: str | None = None,
+        audio_enabled: bool = False,
     ) -> Subscription:
         """Subscribe a WebSocket to a series."""
         subscription = Subscription(
@@ -79,12 +82,41 @@ class ConnectionManager:
             viewer_mode=viewer_mode,
             player_id=player_id,
             player_role=player_role,
+            audio_enabled=audio_enabled,
         )
         async with self._lock:
             if series_id not in self._subscriptions:
                 self._subscriptions[series_id] = []
             self._subscriptions[series_id].append(subscription)
         return subscription
+
+    async def set_audio_enabled(self, subscription_id: str, enabled: bool) -> None:
+        """Update audio preference for a subscription."""
+        async with self._lock:
+            for series_id, subs in self._subscriptions.items():
+                for sub in subs:
+                    if sub.id == subscription_id:
+                        sub.audio_enabled = enabled
+                        logger.info(
+                            "Audio %s for subscription %s (series %s)",
+                            "enabled" if enabled else "disabled",
+                            subscription_id,
+                            series_id,
+                        )
+                        return
+
+    def has_audio_listeners(self, series_id: str) -> bool:
+        """Check if any subscriber wants audio for this series."""
+        subs = self._subscriptions.get(series_id, [])
+        has_listeners = any(sub.audio_enabled for sub in subs)
+        logger.info(
+            "Audio listeners check for series %s: %s (%d subs, audio states: %s)",
+            series_id,
+            has_listeners,
+            len(subs),
+            [sub.audio_enabled for sub in subs],
+        )
+        return has_listeners
 
     def _should_send_event(self, subscription: Subscription, event: GameEvent) -> bool:
         """Determine if an event should be sent to a subscription."""
@@ -282,6 +314,21 @@ async def websocket_endpoint(websocket: WebSocket):
 
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong", "payload": {}})
+
+            elif msg_type == "set_audio":
+                if subscription:
+                    enabled = payload.get("enabled", False)
+                    await ws_manager.set_audio_enabled(subscription.id, enabled)
+                    await websocket.send_json(
+                        {
+                            "type": "audio_updated",
+                            "payload": {"enabled": enabled},
+                        }
+                    )
+                else:
+                    await ws_manager.send_error(
+                        websocket, "Must subscribe before setting audio preference"
+                    )
 
             else:
                 await ws_manager.send_error(websocket, f"Unknown message type: {msg_type}")
