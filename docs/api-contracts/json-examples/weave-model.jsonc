@@ -4,25 +4,21 @@
   "_source": "https://docs.wandb.ai/weave/guides/core-types/models",
   "_description": "Weave Model structure for versioned application code/config.",
 
+  // Standard Weave Object Metadata (Models are Weave Objects)
+  "ref": "weave://entity/project/object/agent-model:v1",
   "name": "agent-model",
+  "version": "v1",
+  "created_at": "2026-01-31T12:00:00.000000+00:00",
+
   "description": "Agent configuration and prediction interface",
 
-  "signature": {
-    "inputs": {
-      "task": "string"
-    },
-    "outputs": {
-      "response": "string"
-    }
-  },
+  // Model attributes — typed fields defined on the Model subclass.
+  // In Python: class AgentModel(weave.Model): system_prompt: str ...
+  "system_prompt": "You are a helpful assistant.",
+  "model_name": "gpt-4o",
+  "temperature": 0.7
 
-  "predict": {
-    "_comment": "Weave models define a predict method; stored as callable in code."
-  },
-
-  "_weave_metadata": {
-    "ref": "weave://entity/project/object/agent-model:v1",
-    "version": "v1",
-    "created_at": "2026-01-31T12:00:00.000000+00:00"
-  }
+  // NOTE: Models define a predict() method decorated with @weave.op().
+  // JSON cannot represent callables — the predict method lives in code only.
+  // See: https://docs.wandb.ai/weave/guides/core-types/models
 }

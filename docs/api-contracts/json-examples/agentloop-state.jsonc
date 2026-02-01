@@ -20,7 +20,8 @@
           "args": {
             "query": "AI trends 2026"
           },
-          "id": "call_123"
+          "id": "call_123",
+          "type": "tool_call"
         }
       ]
     },

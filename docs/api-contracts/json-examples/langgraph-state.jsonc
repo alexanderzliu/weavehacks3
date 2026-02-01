@@ -18,7 +18,8 @@
         {
           "id": "call-001",
           "name": "web_search",
-          "args": {"query": "AI trends 2026"}
+          "args": {"query": "AI trends 2026"},
+          "type": "tool_call"
         }
       ]
     },
@@ -67,6 +68,9 @@
   "response": "Based on my research, the top AI trends in 2026 are...",
   
   "iteration": 2,
-  "max_iterations": 5,
-  "thread_id": "thread-abc123"
+  "max_iterations": 5
+
+  // NOTE: thread_id is NOT a state field. It belongs in LangGraph config:
+  // {"configurable": {"thread_id": "thread-abc123"}}
+  // See: https://langchain-ai.github.io/langgraph/concepts/persistence/
 }

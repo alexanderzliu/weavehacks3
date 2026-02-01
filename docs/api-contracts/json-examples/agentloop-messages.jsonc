@@ -5,14 +5,14 @@
   "_description": "LangChain message serialization formats used by agent-loop.",
 
   // HumanMessage
-  // https://api.python.langchain.com/en/latest/messages/langchain_core.messages.human.HumanMessage.html
+  // https://reference.langchain.com/python/langchain/messages/
   "human_message": {
     "type": "human",
     "content": "What is the weather?"
   },
 
   // AIMessage (Text)
-  // https://api.python.langchain.com/en/latest/messages/langchain_core.messages.ai.AIMessage.html
+  // https://reference.langchain.com/python/langchain/messages/
   "ai_message_text": {
     "type": "ai",
     "content": "It is sunny."
@@ -28,13 +28,14 @@
         "args": {
           "city": "San Francisco"
         },
-        "id": "call_abc123"
+        "id": "call_abc123",
+        "type": "tool_call"
       }
     ]
   },
 
   // ToolMessage (Tool Result)
-  // https://api.python.langchain.com/en/latest/messages/langchain_core.messages.tool.ToolMessage.html
+  // https://reference.langchain.com/python/langchain/messages/
   "tool_message": {
     "type": "tool",
     "content": "72 degrees and sunny",
@@ -43,7 +44,7 @@
   },
 
   // SystemMessage
-  // https://api.python.langchain.com/en/latest/messages/langchain_core.messages.system.SystemMessage.html
+  // https://reference.langchain.com/python/langchain/messages/
   "system_message": {
     "type": "system",
     "content": "You are a helpful assistant."

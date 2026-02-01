@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "langgraph-checkpoint",
-  "_source": "https://langchain-ai.github.io/langgraph/concepts/persistence/#checkpoints",
+  "_source": "https://docs.langchain.com/oss/python/langgraph/persistence#checkpoints",
   "_description": "LangGraph StateSnapshot/Checkpoint structure for thread persistence.",
   
   "config": {

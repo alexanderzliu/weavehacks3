@@ -11,45 +11,20 @@
     "row_count": 50
   },
   
+  // Scorers are @weave.op() decorated functions or Scorer subclasses in Python.
+  // Represented here as metadata since JSON cannot express callables.
   "scorers": [
     {
       "name": "accuracy_score",
       "description": "Measures factual accuracy of response"
     },
     {
-      "name": "completeness_score", 
+      "name": "completeness_score",
       "description": "Measures how completely the task was addressed"
     }
-  ],
-  
-  "results": {
-    "summary": {
-      "accuracy_score": {
-        "mean": 0.85,
-        "std": 0.12
-      },
-      "completeness_score": {
-        "mean": 0.78,
-        "std": 0.15
-      }
-    },
-    "rows": [
-      {
-        "example_id": "0",
-        "output": {
-          "response": "The article covers alignment and safety concerns."
-        },
-        "scores": {
-          "accuracy_score": 0.9,
-          "completeness_score": 0.7
-        }
-      }
-    ]
-  },
-  
-  "_weave_metadata": {
-    "model_ref": "weave://entity/project/object/agent-model:v3",
-    "created_at": "2026-01-31T12:00:00.000000+00:00",
-    "duration_seconds": 45.2
-  }
+  ]
+
+  // NOTE: Evaluation is a "blueprint" — it does NOT store results.
+  // Results are returned from evaluation.evaluate(model).
+  // See: https://docs.wandb.ai/weave/guides/core-types/evaluations#5-run-the-evaluation
 }
