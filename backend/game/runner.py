@@ -2,7 +2,7 @@
 
 import logging
 import random
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import weave
@@ -83,7 +83,7 @@ class GameRunner:
         """Create, persist, and broadcast a game event."""
         event = GameEvent(
             id=str(uuid4()),
-            ts=datetime.utcnow(),
+            ts=datetime.now(UTC),
             series_id=self.series_id,
             game_id=self.game_id,
             type=event_type,
@@ -213,7 +213,7 @@ class GameRunner:
         # Start game
         async with get_db_session() as db:
             await crud.update_game(
-                db, self.game_id, status=GamePhase.DAY, started_at=datetime.utcnow()
+                db, self.game_id, status=GamePhase.DAY, started_at=datetime.now(UTC)
             )
 
         await self._emit_event(
@@ -257,7 +257,7 @@ class GameRunner:
                 self.game_id,
                 status=GamePhase.COMPLETED,
                 winner=winner.value if winner else None,
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(UTC),
             )
 
         payload = {"day_number": self._day_number, "stopped": stopped}

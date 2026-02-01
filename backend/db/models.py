@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models for Mafia ACE."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     JSON,
@@ -13,6 +13,11 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
+
+
+def _utc_now() -> datetime:
+    """Return timezone-aware UTC datetime for database defaults."""
+    return datetime.now(UTC)
 
 
 class Base(DeclarativeBase):
@@ -31,8 +36,8 @@ class Series(Base):
     current_game_number = Column(Integer, default=0)
     config = Column(JSON, nullable=False)  # SeriesConfig as JSON
     random_seed = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now)
 
     # Relationships
     players = relationship("Player", back_populates="series", cascade="all, delete-orphan")
@@ -47,7 +52,7 @@ class Player(Base):
     name = Column(String, nullable=False)
     model_provider = Column(String, nullable=False)  # anthropic, openai, google
     model_name = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
 
     # Relationships
     series = relationship("Series", back_populates="players")
@@ -69,7 +74,7 @@ class Game(Base):
     random_seed = Column(Integer, nullable=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
 
     # Relationships
     series = relationship("Series", back_populates="games")
@@ -102,7 +107,7 @@ class Cheatsheet(Base):
     player_id = Column(String, ForeignKey("players.id", ondelete="CASCADE"), nullable=False)
     version = Column(Integer, nullable=False, default=0)
     items = Column(JSON, nullable=False, default=list)  # List of CheatsheetItem dicts
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utc_now)
     created_after_game = Column(
         Integer, nullable=True
     )  # Game number this version was created after
@@ -119,7 +124,7 @@ class GameEvent(Base):
     id = Column(String, primary_key=True)
     series_id = Column(String, ForeignKey("series.id", ondelete="CASCADE"), nullable=False)
     game_id = Column(String, ForeignKey("games.id", ondelete="CASCADE"), nullable=False)
-    ts = Column(DateTime, default=datetime.utcnow)
+    ts = Column(DateTime, default=_utc_now)
     type = Column(String, nullable=False)  # EventType enum value
     visibility = Column(String, nullable=False)  # public, mafia, private, viewer
     actor_player_id = Column(String, ForeignKey("players.id"), nullable=True)

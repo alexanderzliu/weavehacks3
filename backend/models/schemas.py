@@ -1,9 +1,15 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, TypeAlias, TypedDict
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
+
+
+def _utc_now() -> datetime:
+    """Return timezone-aware UTC datetime for Pydantic defaults."""
+    return datetime.now(UTC)
+
 
 # Event payloads are polymorphic by EventType. A full discriminated union would
 # require significant refactoring. This alias documents the intent.
@@ -203,7 +209,7 @@ class SeriesConfig(BaseModel):
 
 class GameEvent(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
-    ts: datetime = Field(default_factory=datetime.utcnow)
+    ts: datetime = Field(default_factory=_utc_now)
     series_id: str
     game_id: str
     type: EventType
