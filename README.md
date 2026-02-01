@@ -11,7 +11,7 @@ This is a full-stack application where AI agents autonomously play Mafia games i
 **Backend:**
 - FastAPI (async web framework)
 - SQLAlchemy (async) with SQLite
-- Multi-LLM support: OpenAI, Anthropic, Google AI
+- Multi-LLM support: OpenAI, OpenAI-compatible endpoints, Anthropic, Google Gemini, OpenRouter
 - Weave (Weights & Biases) for observability and evaluation
 
 **Frontend:**
@@ -59,9 +59,6 @@ cd backend
 # Install dependencies (using uv)
 uv sync
 
-# Or with pip
-pip install -r requirements.txt
-
 # Create .env file
 cp .env.example .env  # Then edit with your API keys
 ```
@@ -71,11 +68,14 @@ Required environment variables in `.env`:
 # AI Providers (need at least one)
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=...
+GOOGLE_API_KEY=...        # or GEMINI_API_KEY=...
 
 # OpenAI-compatible endpoint (Groq, Together, Ollama, etc.)
 OPENAI_COMPATIBLE_BASE_URL=https://api.groq.com/openai/v1
 OPENAI_COMPATIBLE_API_KEY=...
+
+# OpenRouter
+OPENROUTER_API_KEY=...
 
 # Optional: Weave observability
 WANDB_API_KEY=...
