@@ -23,6 +23,8 @@
     cheatsheets?: Map<string, Cheatsheet>; // playerId -> cheatsheet
     loadingCheatsheet?: string | null; // playerId currently loading
     onPlayerHover?: (playerId: string | null) => void;
+    onSpeechComplete?: () => void;
+    speechBubbleKey?: number; // Key to force SpeechBubble re-render
   }
 
   let {
@@ -34,7 +36,9 @@
     showRoles = false,
     cheatsheets = new Map(),
     loadingCheatsheet = null,
-    onPlayerHover
+    onPlayerHover,
+    onSpeechComplete,
+    speechBubbleKey = 0
   }: Props = $props();
 
   // Responsive table sizing
@@ -138,11 +142,14 @@
 
     <!-- Speech bubble centered on table -->
     {#if currentSpeakerId && speechContent}
-      <SpeechBubble
-        speakerName={speakerName || 'Unknown'}
-        content={speechContent}
-        {scaleFactor}
-      />
+      {#key speechBubbleKey}
+        <SpeechBubble
+          speakerName={speakerName || 'Unknown'}
+          content={speechContent}
+          {scaleFactor}
+          onStreamComplete={onSpeechComplete}
+        />
+      {/key}
     {/if}
 
     <!-- Vote badge clusters -->

@@ -8,9 +8,7 @@
 		connectionState,
 		events,
 		snapshot,
-		seriesProgress,
-		currentSpeaker,
-		currentVotes
+		seriesProgress
 	} from '$lib/websocket';
 	import type { SeriesResponse, Cheatsheet, GameResponse, GameEvent, GamePhase } from '$lib/types';
 	import RoundTable from '$lib/components/RoundTable.svelte';
@@ -50,8 +48,19 @@
 	// Replay state
 	let isReplaying = $state(false);
 	let replayIndex = $state(0);
-	let replayTimer = $state<ReturnType<typeof setInterval> | null>(null);
-	const REPLAY_DELAY_MS = 600;
+	let replayTimer = $state<ReturnType<typeof setTimeout> | null>(null);
+	let waitingForSpeech = $state(false); // True when waiting for speech to finish streaming
+	const NON_SPEECH_DELAY_MS = 400; // Delay for non-speech events
+	const POST_SPEECH_DELAY_MS = 800; // Delay after speech finishes before next event
+
+	// Live mode buffering state (mirrors replay behavior)
+	let liveEventQueue = $state<GameEvent[]>([]);
+	let displayedLiveEvents = $state<GameEvent[]>([]);
+	let liveWaitingForSpeech = $state(false);
+	let liveTimer = $state<ReturnType<typeof setTimeout> | null>(null);
+	let lastProcessedEventCount = $state(0); // Track how many events we've seen from $events
+	let liveInitialized = $state(false); // Track if we've done initial catch-up
+	let speechBubbleKey = $state(0); // Key to force SpeechBubble re-render
 
 	// Player name to ID lookup
 	let playerIdByName = $derived.by(() => {
@@ -101,11 +110,11 @@
 		};
 	}
 
-	// Events for display: replay slice, full history, or live
+	// Events for display: replay slice, full history, or live (buffered)
 	let displayEvents = $derived.by(() => {
 		if (isReplaying) return historyEvents.slice(0, replayIndex + 1);
 		if (viewingGameId) return historyEvents;
-		return $events;
+		return displayedLiveEvents; // Use buffered events instead of raw $events
 	});
 
 	// Snapshot for display: reconstructed history or live
@@ -115,9 +124,8 @@
 		return reconstructSnapshot(historyGame, historyEvents, idx);
 	});
 
-	// Speaker derived from display events (for history/replay mode)
+	// Speaker derived from display events (for both history/replay and buffered live mode)
 	let displaySpeaker = $derived.by(() => {
-		if (!viewingGameId) return $currentSpeaker;
 		const evts = displayEvents;
 		const lastSpeech = [...evts].reverse().find((e) => e.type === 'speech');
 		if (!lastSpeech) return null;
@@ -130,9 +138,8 @@
 		};
 	});
 
-	// Votes derived from display events (for history/replay mode)
+	// Votes derived from display events (for both history/replay and buffered live mode)
 	let displayVotes = $derived.by(() => {
-		if (!viewingGameId) return $currentVotes;
 		const votes = new Map<string, string>();
 		let lastPhaseChangeIndex = -1;
 		displayEvents.forEach((e, i) => {
@@ -187,17 +194,143 @@
 		}));
 	});
 
+	// Cheatsheets for RoundTable - maps playerId -> cheatsheet
+	// Uses the appropriate cache key based on viewing context (history vs live)
+	let cheatsheetsForRoundTable = $derived.by(() => {
+		const gameNumber = historyGame?.game_number;
+		const result = new Map<string, Cheatsheet>();
+
+		for (const player of seriesPlayers) {
+			const cacheKey = gameNumber !== undefined ? `${player.id}:${gameNumber}` : player.id;
+			const cheatsheet = cheatsheets.get(cacheKey);
+			if (cheatsheet) {
+				result.set(player.id, cheatsheet);
+			}
+		}
+
+		return result;
+	});
+
+	// Helper to reset live state - called before loading a new series
+	function resetLiveState() {
+		liveEventQueue = [];
+		displayedLiveEvents = [];
+		liveWaitingForSpeech = false;
+		lastProcessedEventCount = 0;
+		liveInitialized = false;
+		if (liveTimer) {
+			clearTimeout(liveTimer);
+			liveTimer = null;
+		}
+		speechBubbleKey++;
+	}
+
+	// Track if we've initialized for this series (plain variable, not reactive)
+	// This prevents the effect from re-running when other state changes
+	let initializedForSeries: string | null = null; // NOT $state - intentionally non-reactive
+
 	$effect(() => {
 		const seriesId = $page.params.id;
-		if (seriesId) {
+		if (seriesId && seriesId !== initializedForSeries) {
+			initializedForSeries = seriesId;
+			resetLiveState();
 			loadData(seriesId);
 			connect(seriesId);
+		}
+	});
+
+	// Watch for new live events and queue them for buffered display
+	$effect(() => {
+		// Only buffer in live mode (not viewing history)
+		if (viewingGameId) return;
+
+		const allEvents = $events;
+		const newEventCount = allEvents.length;
+
+		// On first load (or when returning to live), show all existing events immediately
+		if (!liveInitialized && newEventCount > 0) {
+			displayedLiveEvents = [...allEvents];
+			lastProcessedEventCount = newEventCount;
+			liveInitialized = true;
+			return;
+		}
+
+		// Queue any new events that arrived since last processed
+		if (newEventCount > lastProcessedEventCount) {
+			const newEvents = allEvents.slice(lastProcessedEventCount);
+
+			// Check if a new game is starting - reset display state to show fresh animations
+			const hasGameStarted = newEvents.some(e => e.type === 'game_started');
+			if (hasGameStarted) {
+				// Clear displayed events so animations restart fresh for the new game
+				displayedLiveEvents = [];
+				liveEventQueue = [];
+				liveWaitingForSpeech = false;
+				if (liveTimer) {
+					clearTimeout(liveTimer);
+					liveTimer = null;
+				}
+			}
+
+			liveEventQueue = [...liveEventQueue, ...newEvents];
+			lastProcessedEventCount = newEventCount;
+
+			// Trigger processing if not already waiting
+			if (!liveWaitingForSpeech && liveTimer === null) {
+				processNextLiveEvent();
+			}
+		}
+	});
+
+	// Reset live buffering when switching to history view
+	$effect(() => {
+		if (viewingGameId) {
+			// Entering history view - reset live state
+			liveEventQueue = [];
+			displayedLiveEvents = [];
+			liveWaitingForSpeech = false;
+			lastProcessedEventCount = 0;
+			liveInitialized = false;
+			if (liveTimer) {
+				clearTimeout(liveTimer);
+				liveTimer = null;
+			}
+		}
+	});
+
+	// Track last seen game event to refresh games list when new games start/end
+	let lastSeenGameEventCount = $state(0);
+
+	// Refresh games list when a game starts or ends
+	$effect(() => {
+		const allEvents = $events;
+		if (allEvents.length <= lastSeenGameEventCount) return;
+
+		const newEvents = allEvents.slice(lastSeenGameEventCount);
+		const hasGameLifecycleEvent = newEvents.some(
+			(e) => e.type === 'game_started' || e.type === 'game_ended'
+		);
+
+		lastSeenGameEventCount = allEvents.length;
+
+		if (hasGameLifecycleEvent && series) {
+			// Refresh games list
+			fetchSeriesGames(series.id).then(async (res) => {
+				if (res.ok) {
+					games = await res.json();
+				}
+			});
 		}
 	});
 
 	onDestroy(() => {
 		disconnect();
 		stopReplay();
+		// Clean up live timer
+		if (liveTimer) {
+			clearTimeout(liveTimer);
+			liveTimer = null;
+		}
 	});
 
 	async function loadData(seriesId: string) {
@@ -231,18 +364,23 @@
 			return;
 		}
 
+		// Determine cache key: include game number when viewing history
+		// so we cache per-game cheatsheets separately
+		const gameNumber = historyGame?.game_number;
+		const cacheKey = gameNumber !== undefined ? `${playerId}:${gameNumber}` : playerId;
+
 		// Already cached?
-		if (cheatsheets.has(playerId)) {
+		if (cheatsheets.has(cacheKey)) {
 			return;
 		}
 
-		// Fetch cheatsheet
+		// Fetch cheatsheet (pass game_number when viewing history for accurate replay)
 		loadingCheatsheet = playerId;
 		try {
-			const res = await fetchPlayerCheatsheet(playerId);
+			const res = await fetchPlayerCheatsheet(playerId, gameNumber);
 			if (res.ok) {
 				const data = await res.json();
-				cheatsheets = new Map(cheatsheets).set(playerId, data.cheatsheet);
+				cheatsheets = new Map(cheatsheets).set(cacheKey, data.cheatsheet);
 			}
 		} catch (e) {
 			console.error('Failed to fetch cheatsheet:', e);
@@ -332,6 +470,128 @@
 		viewingGameId = null;
 		historyGame = null;
 		historyEvents = [];
+
+		// Catch up with live events that happened while viewing history
+		// Show all current events immediately, then buffer any new ones
+		const currentEvents = $events;
+		displayedLiveEvents = [...currentEvents];
+		lastProcessedEventCount = currentEvents.length;
+		liveEventQueue = [];
+		liveWaitingForSpeech = false;
+		liveInitialized = true;
+		if (liveTimer) {
+			clearTimeout(liveTimer);
+			liveTimer = null;
+		}
+
+		// Force SpeechBubble to re-render by incrementing a key
+		// This ensures the typewriter restarts fresh when returning to live
+		speechBubbleKey++;
+	}
+
+	// Live mode buffering functions
+	function processNextLiveEvent() {
+		if (liveEventQueue.length === 0 || liveWaitingForSpeech) {
+			// Clear stale timer reference when queue is empty
+			if (liveTimer) {
+				clearTimeout(liveTimer);
+				liveTimer = null;
+			}
+			return;
+		}
+
+		// Clear any pending timer
+		if (liveTimer) {
+			clearTimeout(liveTimer);
+			liveTimer = null;
+		}
+
+		const nextEvent = liveEventQueue[0];
+		displayedLiveEvents = [...displayedLiveEvents, nextEvent];
+		liveEventQueue = liveEventQueue.slice(1);
+
+		if (nextEvent.type === 'speech') {
+			// Wait for speech streaming to complete (callback will trigger next)
+			liveWaitingForSpeech = true;
+		} else {
+			// Non-speech event: short delay then process next
+			liveTimer = setTimeout(processNextLiveEvent, NON_SPEECH_DELAY_MS);
+		}
+	}
+
+	function handleLiveSpeechComplete() {
+		if (!liveWaitingForSpeech) return;
+
+		liveWaitingForSpeech = false;
+		// Brief pause after speech before next event
+		liveTimer = setTimeout(processNextLiveEvent, POST_SPEECH_DELAY_MS);
+	}
+
+	// Check if the current event at replayIndex is a speech event
+	function isCurrentEventSpeech(): boolean {
+		if (replayIndex >= historyEvents.length) return false;
+		return historyEvents[replayIndex].type === 'speech';
+	}
+
+	// Advance to the next event in replay
+	function advanceReplay() {
+		if (!isReplaying) return;
+
+		if (replayIndex >= historyEvents.length - 1) {
+			// End replay but preserve position at final state
+			isReplaying = false;
+			waitingForSpeech = false;
+			if (replayTimer) {
+				clearTimeout(replayTimer);
+				replayTimer = null;
+			}
+			return;
+		}
+
+		replayIndex++;
+
+		// Schedule next advancement based on event type
+		scheduleNextAdvance();
+	}
+
+	// Schedule the next event advancement based on current event type
+	function scheduleNextAdvance() {
+		if (!isReplaying) return;
+
+		// Clear any pending timer
+		if (replayTimer) {
+			clearTimeout(replayTimer);
+			replayTimer = null;
+		}
+
+		if (isCurrentEventSpeech()) {
+			// Wait for speech streaming to complete (callback will trigger next advance)
+			waitingForSpeech = true;
+		} else {
+			// Non-speech event: advance after short delay
+			waitingForSpeech = false;
+			replayTimer = setTimeout(advanceReplay, NON_SPEECH_DELAY_MS);
+		}
+	}
+
+	// Called when speech bubble finishes streaming (replay mode)
+	function handleReplaySpeechComplete() {
+		if (!isReplaying || !waitingForSpeech) return;
+
+		waitingForSpeech = false;
+		// Brief pause after speech before next event
+		replayTimer = setTimeout(advanceReplay, POST_SPEECH_DELAY_MS);
+	}
+
+	// Unified speech complete handler for RoundTable
+	function handleSpeechComplete() {
+		if (viewingGameId) {
+			// History/replay mode
+			handleReplaySpeechComplete();
+		} else {
+			// Live mode
+			handleLiveSpeechComplete();
+		}
 	}
 
 	function startReplay() {
@@ -339,32 +599,24 @@
 
 		// Clear any existing timer first to prevent memory leak
 		if (replayTimer) {
-			clearInterval(replayTimer);
+			clearTimeout(replayTimer);
 			replayTimer = null;
 		}
 
 		isReplaying = true;
 		replayIndex = 0;
+		waitingForSpeech = false;
 
-		replayTimer = setInterval(() => {
-			if (replayIndex >= historyEvents.length - 1) {
-				// End replay but preserve position at final state
-				isReplaying = false;
-				if (replayTimer) {
-					clearInterval(replayTimer);
-					replayTimer = null;
-				}
-			} else {
-				replayIndex++;
-			}
-		}, REPLAY_DELAY_MS);
+		// Start the event-driven replay
+		scheduleNextAdvance();
 	}
 
 	function stopReplay() {
 		isReplaying = false;
 		replayIndex = 0;
+		waitingForSpeech = false;
 		if (replayTimer) {
-			clearInterval(replayTimer);
+			clearTimeout(replayTimer);
 			replayTimer = null;
 		}
 	}
@@ -442,6 +694,12 @@
 				</div>
 				{#if $connectionState.connected && $connectionState.subscribedTo}
 					<span class="subscribed-text">Receiving live updates</span>
+				{/if}
+				{#if liveEventQueue.length > 0}
+					<span class="queue-indicator">
+						<span class="queue-dot"></span>
+						{liveEventQueue.length} queued
+					</span>
 				{/if}
 				{#if $connectionState.error}
 					<span class="error-text">{$connectionState.error}</span>
@@ -544,16 +802,23 @@
 					<div class="table-overlay top-left">
 						<span class="overlay-label">Game</span>
 						<span class="overlay-value">
-							{$seriesProgress?.game_number ?? series.current_game_number}/{$seriesProgress?.total_games ?? series.total_games}
+							{historyGame?.game_number ?? $seriesProgress?.game_number ?? series.current_game_number}/{$seriesProgress?.total_games ?? series.total_games}
 						</span>
 					</div>
 
-					<!-- Top-right: Phase indicator -->
-					{#if displaySnapshot}
+					<!-- Top-right: Phase indicator (history) or LIVE indicator (current game) -->
+					{#if viewingGameId && displaySnapshot}
 						<div class="table-overlay top-right">
 							<PhaseIndicator phase={displaySnapshot.phase} dayNumber={displaySnapshot.day_number} />
 						</div>
+					{:else if !viewingGameId && $snapshot}
+						<div class="table-overlay top-right live-indicator">
+							<span class="live-dot"></span>
+							<span class="live-label">LIVE</span>
+						</div>
+					{/if}
 
+					{#if displaySnapshot}
 						<!-- Bottom-right: Alive count -->
 						<div class="table-overlay bottom-right">
 							<span class="overlay-label">Alive</span>
@@ -568,9 +833,11 @@
 						speakerName={displaySpeaker?.playerName || null}
 						votes={displayVotes}
 						showRoles={true}
-						{cheatsheets}
+						cheatsheets={cheatsheetsForRoundTable}
 						{loadingCheatsheet}
 						onPlayerHover={handlePlayerHover}
+						onSpeechComplete={handleSpeechComplete}
+						{speechBubbleKey}
 					/>
 				</div>
 
@@ -767,6 +1034,32 @@
 	.error-text {
 		color: var(--danger);
 		font-size: 0.9rem;
+	}
+
+	.queue-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-family: var(--font-body);
+		font-size: 0.85rem;
+		color: var(--accent);
+		padding: 0.25rem 0.6rem;
+		background: rgba(212, 175, 55, 0.1);
+		border: 1px solid var(--accent-dim);
+		border-radius: 12px;
+	}
+
+	.queue-dot {
+		width: 6px;
+		height: 6px;
+		background: var(--accent);
+		border-radius: 50%;
+		animation: queuePulse 1s ease-in-out infinite;
+	}
+
+	@keyframes queuePulse {
+		0%, 100% { transform: scale(1); opacity: 1; }
+		50% { transform: scale(1.3); opacity: 0.7; }
 	}
 
 	/* ============================================
@@ -1128,6 +1421,39 @@
 		padding: 0;
 		background: transparent;
 		border: none;
+	}
+
+	.table-overlay.top-right.live-indicator {
+		flex-direction: row;
+		gap: 0.5rem;
+		padding: 0.5rem 0.8rem;
+		background: rgba(20, 20, 18, 0.95);
+		border: 2px solid var(--success);
+		border-radius: 4px;
+		box-shadow: 0 0 15px rgba(80, 200, 120, 0.3);
+	}
+
+	.live-dot {
+		width: 10px;
+		height: 10px;
+		background: var(--success);
+		border-radius: 50%;
+		animation: livePulse 1.5s ease-in-out infinite;
+		box-shadow: 0 0 8px var(--success);
+	}
+
+	@keyframes livePulse {
+		0%, 100% { opacity: 1; transform: scale(1); }
+		50% { opacity: 0.6; transform: scale(0.9); }
+	}
+
+	.live-label {
+		font-family: var(--font-heading);
+		font-size: 0.85rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.15em;
+		color: var(--success);
 	}
 
 	.table-overlay.bottom-right {
