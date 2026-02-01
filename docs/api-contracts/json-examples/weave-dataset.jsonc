@@ -26,11 +26,10 @@
         "difficulty": "easy"
       }
     }
-  ],
-  
-  "_weave_metadata": {
-    "ref": "weave://entity/project/object/evaluation-examples:v1",
-    "version": "v1",
-    "created_at": "2026-01-31T12:00:00.000000+00:00"
-  }
+  ]
+
+  // NOTE: _weave_metadata is not a documented Weave concept.
+  // Dataset ref, version, and created_at are standard Weave Object fields
+  // managed automatically by weave.publish().
+  // See: https://docs.wandb.ai/weave/guides/core-types/datasets
 }

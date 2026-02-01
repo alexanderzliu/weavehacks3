@@ -4,20 +4,20 @@
   "_source": "https://docs.wandb.ai/weave/guides/tracking/ops",
   "_description": "Weave Call/Trace structure. Automatically captured when using @weave.op().",
   
-  "id": "call-abc123def456",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "op_name": "agent_step",
   "display_name": "Agent Node",
   
   "project_id": "entity/agent-loop",
-  "trace_id": "trace-xyz789",
+  "trace_id": "f9e8d7c6-b5a4-3210-fedc-ba0987654321",
   "parent_id": null,
   
   "started_at": "2026-01-31T12:00:00.000000+00:00",
   "ended_at": "2026-01-31T12:00:02.500000+00:00",
-  "duration_ms": 2500,
-  
-  "status": "success",
   "exception": null,
+
+  // NOTE: duration, status, and cost are Calculated Fields — not stored on the call.
+  // See: https://docs.wandb.ai/weave/guides/tracking/tracing#call-schema
   
   "inputs": {
     "state": {

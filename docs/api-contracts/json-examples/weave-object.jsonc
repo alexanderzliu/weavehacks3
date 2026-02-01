@@ -9,7 +9,8 @@
   "name": "object-name",
   "version": "v1",
   "created_at": "2026-01-31T12:00:00.000000+00:00",
-  "updated_at": "2026-01-31T12:00:00.000000+00:00",
+  // NOTE: No "updated_at" — Weave objects are immutable. Each edit creates a new version.
+  // See: https://docs.wandb.ai/weave/guides/tracking/objects#publishing-an-object
 
   // The actual stored value
   "value": {
