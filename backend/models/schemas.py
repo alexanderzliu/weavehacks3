@@ -1,9 +1,38 @@
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, TypeAlias, TypedDict
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
+
+# Event payloads are polymorphic by EventType. A full discriminated union would
+# require significant refactoring. This alias documents the intent.
+EventPayload: TypeAlias = dict[str, Any]
+
+
+# ============ TypedDict for Runtime Data ============
+
+
+class GamePlayerDict(TypedDict):
+    """Runtime player data used during game execution (dict-style access)."""
+
+    game_player_id: str
+    player_id: str
+    name: str
+    role: str
+    is_alive: bool
+    model_provider: "ModelProvider"
+    model_name: str
+    cheatsheet: "Cheatsheet"
+
+
+class PlayerSnapshotDict(TypedDict):
+    """Minimal player data for WebSocket snapshots."""
+
+    name: str
+    role: str
+    is_alive: bool
+
 
 # ============ Enums ============
 
@@ -171,7 +200,7 @@ class GameEvent(BaseModel):
     target_id: str | None = None
     # Payload is polymorphic based on EventType - typed payloads would require
     # discriminated unions which add complexity without significant benefit here
-    payload: dict[str, Any] = Field(default_factory=dict)
+    payload: EventPayload = Field(default_factory=dict)
 
 
 # ============ Actor Output Models ============
