@@ -148,3 +148,17 @@ export async function fetchPlayerCheatsheet(
 export async function fetchCheatsheetHistory(playerId: string): Promise<Response> {
 	return request(`/players/${playerId}/cheatsheet/history`);
 }
+
+export async function fetchProvidersConfig(): Promise<Response> {
+	return request('/providers');
+}
+
+export interface ProviderConfig {
+	id: string;
+	available: boolean;
+	default_model: string;
+}
+
+export interface ProvidersResponse {
+	providers: ProviderConfig[];
+}

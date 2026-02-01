@@ -16,9 +16,16 @@ class Settings(BaseSettings):
     # OpenAI-compatible endpoint (Groq, Together, Ollama, etc.)
     OPENAI_COMPATIBLE_BASE_URL: str = ""
     OPENAI_COMPATIBLE_API_KEY: str = ""
+    OPENAI_COMPATIBLE_MODEL: str = "gpt-4o-mini"
 
     # OpenRouter
     OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "anthropic/claude-3.5-sonnet"
+
+    # Default models for direct providers
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
+    GOOGLE_MODEL: str = "gemini-2.0-flash"
 
     # Weave
     WANDB_API_KEY: str = ""
