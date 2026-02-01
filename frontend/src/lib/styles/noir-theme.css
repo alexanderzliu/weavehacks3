@@ -66,6 +66,7 @@
     --phase-discussion: linear-gradient(135deg, #2a2010 0%, #3d3020 50%, #2a2010 100%);
     --phase-voting: linear-gradient(135deg, #2d1515 0%, #4a2020 50%, #2d1515 100%);
     --phase-over: linear-gradient(135deg, #1a1510 0%, #2a2520 100%);
+    --phase-setup: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
 }
 
 /* ============================================
@@ -130,6 +131,7 @@
     --phase-discussion: linear-gradient(135deg, #f5efe6 0%, #ede5d8 50%, #f5efe6 100%);
     --phase-voting: linear-gradient(135deg, #f5e8ea 0%, #edd8dc 50%, #f5e8ea 100%);
     --phase-over: linear-gradient(135deg, #f5efe6 0%, #ede5d8 100%);
+    --phase-setup: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 50%, #f0f0f0 100%);
 }
 
 /* ============================================

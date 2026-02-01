@@ -27,26 +27,6 @@
 </div>
 
 <style>
-  /* CSS Variables - Noir Palette */
-  :root {
-    --noir-charcoal: #141412;
-    --noir-gold: #d4af37;
-    --noir-gold-dim: #a68829;
-    --noir-gold-bright: #f4cf47;
-
-    --color-mafia: #c41e3a;
-
-    --text-gold: #d4af37;
-    --text-secondary: #a89880;
-
-    /* Phase Gradients */
-    --phase-night: linear-gradient(135deg, #0d1a2d 0%, #1a2744 50%, #0d1a2d 100%);
-    --phase-discussion: linear-gradient(135deg, #2a2010 0%, #3d3020 50%, #2a2010 100%);
-    --phase-voting: linear-gradient(135deg, #2d1515 0%, #4a2020 50%, #2d1515 100%);
-    --phase-over: linear-gradient(135deg, #1a1510 0%, #2a2520 100%);
-    --phase-setup: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
-  }
-
   /* Phase Indicator Container */
   .phase-indicator {
     display: flex;
@@ -54,14 +34,14 @@
     align-items: center;
     text-align: center;
     padding: 0.6rem 1rem;
-    background: var(--noir-charcoal);
+    background: var(--noir-charcoal, #141412);
     border-radius: 4px;
-    border: 2px solid var(--noir-gold-dim);
+    border: 2px solid var(--noir-gold-dim, #a68829);
     min-width: 100px;
-    transition: all 0.5s ease;
+    transition: all 0.5s ease, background 0.4s ease, border-color 0.4s ease;
     box-shadow:
       0 0 15px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(212, 175, 55, 0.1);
+      inset 0 1px 0 var(--accent-glow, rgba(212, 175, 55, 0.1));
     position: relative;
   }
 
@@ -74,8 +54,9 @@
     transform: translateX(-50%) rotate(45deg);
     width: 8px;
     height: 8px;
-    background: var(--noir-gold);
-    border: 1px solid var(--noir-gold-bright);
+    background: var(--noir-gold, #d4af37);
+    border: 1px solid var(--noir-gold-bright, #f4cf47);
+    transition: background 0.4s ease, border-color 0.4s ease;
   }
 
   /* Phase-specific Styling */
