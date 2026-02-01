@@ -3,7 +3,8 @@
 The primary entry point for running the agent loop.
 Coordinates domain logic, adapters, and LangGraph orchestration.
 
-Contract: docs/contracts/project-code-requirements.md
+See [AR1d] Application layer orchestrates domain + adapters.
+See docs/contracts/project-code-requirements.md for full requirements.
 
 Sources:
     - Weave Init: https://docs.wandb.ai/weave/quickstart
@@ -13,8 +14,12 @@ Sources:
 
 import asyncio
 import uuid
+from typing import TYPE_CHECKING, Any
 
 import weave
+
+if TYPE_CHECKING:
+    from weave.trace.weave_client import Call
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
@@ -24,6 +29,20 @@ from agent_loop.adapters.memory.weave_memory import WeaveMemoryStore
 from agent_loop.domain.ports.memory_store import MemoryStore
 from agent_loop.graph.orchestrator import build_orchestrator_graph
 from agent_loop.graph.state import DEFAULT_MAX_ITERATIONS, AgentState
+
+# Display name truncation limit for Weave traces
+_TASK_DISPLAY_LIMIT = 50
+
+
+def _format_agent_loop_display_name(call: weave.Call) -> str:
+    """Format display name for agent loop traces.
+
+    Extracts task from call inputs and truncates for readability.
+    See [WV1c] - traces are primary observability layer.
+    """
+    task = call.inputs.get("task", "unknown")
+    truncated = task[:_TASK_DISPLAY_LIMIT] if len(task) > _TASK_DISPLAY_LIMIT else task
+    return f"Agent Loop: {truncated}"
 
 
 class AgentLoopResult:
@@ -91,7 +110,7 @@ class AgentLoop:
         self._compiled = self._graph.compile()
         return self
 
-    @weave.op(call_display_name=lambda call: f"Agent Loop: {call.inputs['task'][:50]}")
+    @weave.op(call_display_name=_format_agent_loop_display_name)
     async def arun(
         self,
         task: str,

@@ -3,7 +3,7 @@
 Uses LangGraph StateGraph for orchestration. See [LG1a].
 
 Contract: docs/contracts/langgraph-state.md
-JSON Schema: docs/api-contracts/json-examples/langgraph-state.jsonc
+JSON Schema: docs/api-contracts/json-examples/agentloop-state.jsonc
 
 Sources:
     - LangGraph StateGraph: https://docs.langchain.com/oss/python/langgraph/graph-api#stategraph

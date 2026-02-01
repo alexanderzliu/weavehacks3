@@ -3,52 +3,50 @@
   "$id": "weave-call",
   "_source": "https://docs.wandb.ai/weave/guides/tracking/ops",
   "_description": "Weave Call/Trace structure. Automatically captured when using @weave.op().",
-  
-  "id": "call-abc123def456",
-  "op_name": "agent_step",
+
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "op_name": "agent_node",
   "display_name": "Agent Node",
-  
+
   "project_id": "entity/agent-loop",
-  "trace_id": "trace-xyz789",
+  "trace_id": "f9e8d7c6-b5a4-3210-fedc-ba0987654321",
   "parent_id": null,
-  
+
   "started_at": "2026-01-31T12:00:00.000000+00:00",
   "ended_at": "2026-01-31T12:00:02.500000+00:00",
-  "duration_ms": 2500,
-  
-  "status": "success",
   "exception": null,
-  
+
+  // NOTE: duration, status, and cost are Calculated Fields — not stored on the call.
+  // See: https://docs.wandb.ai/weave/guides/tracking/tracing#call-schema
+
   "inputs": {
     "state": {
-      "task": "Analyze recent AI trends",
       "messages": [
-        {"role": "user", "content": "What are the latest AI trends?"}
+        {"type": "human", "content": "What are the latest AI trends?"}
       ],
-      "iteration": 1
+      "task": "Analyze recent AI trends",
+      "response": null,
+      "iteration": 1,
+      "max_iterations": 5,
+      "evaluations": [],
+      "rankings": []
     }
   },
-  
+
+  // Output is AgentNodeResult (TypedDict), not full state
+  // See: src/agent_loop/graph/nodes.py
   "output": {
-    "state": {
-      "task": "Analyze recent AI trends",
-      "messages": [
-        {"role": "user", "content": "What are the latest AI trends?"},
-        {"role": "assistant", "content": "Based on my analysis..."}
-      ],
-      "decision": {
-        "type": "respond",
-        "reasoning": "Sufficient information gathered"
-      },
-      "iteration": 2
-    }
+    "messages": [
+      {"type": "ai", "content": "Based on my analysis...", "id": "msg-002"}
+    ],
+    "iteration": 2
   },
-  
+
   "attributes": {
     "env": "development",
     "model": "gpt-4o"
   },
-  
+
   "summary": {
     "usage": {
       "prompt_tokens": 150,

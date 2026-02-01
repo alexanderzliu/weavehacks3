@@ -5,7 +5,7 @@
   "_description": "Agent-loop AgentState - Pydantic model for LangGraph state.",
 
   // Core conversation history (LangChain messages)
-  // See: https://python.langchain.com/docs/concepts/#messages
+  // See: https://reference.langchain.com/python/langchain/messages/
   "messages": [
     {
       "type": "human",
@@ -20,7 +20,8 @@
           "args": {
             "query": "AI trends 2026"
           },
-          "id": "call_123"
+          "id": "call_123",
+          "type": "tool_call"
         }
       ]
     },
@@ -41,6 +42,7 @@
   "max_iterations": 5,
 
   // Sub-agent outputs (Pydantic models)
+  // See: src/agent_loop/graph/state.py Evaluation, Ranking
   "evaluations": [
     {
       "iteration": 1,

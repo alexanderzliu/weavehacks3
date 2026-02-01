@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "langgraph-checkpoint",
-  "_source": "https://langchain-ai.github.io/langgraph/concepts/persistence/#checkpoints",
+  "_source": "https://docs.langchain.com/oss/python/langgraph/persistence#checkpoints",
   "_description": "LangGraph StateSnapshot/Checkpoint structure for thread persistence.",
-  
+
   "config": {
     "configurable": {
       "thread_id": "thread-abc123",
@@ -11,7 +11,9 @@
       "checkpoint_id": "1ef663ba-28fe-6528-8002-5a559208592c"
     }
   },
-  
+
+  // values contains the full AgentState at this checkpoint
+  // See: src/agent_loop/graph/state.py
   "values": {
     "messages": [
       {"type": "human", "content": "What are the latest AI trends?"},
@@ -19,24 +21,31 @@
     ],
     "task": "Analyze recent AI trends",
     "response": "Based on my research...",
-    "iteration": 2
+    "iteration": 2,
+    "max_iterations": 5,
+    "evaluations": [
+      {"iteration": 1, "evaluation": "Search results look promising."}
+    ],
+    "rankings": [
+      {"iteration": 1, "ranking": "Response quality is good."}
+    ]
   },
-  
+
   "next": [],
-  
+
   "metadata": {
     "source": "loop",
     "writes": {
-      "agent_node": {
-        "response": "Based on my research...",
-        "decision": {"type": "respond"}
+      // Node name from orchestrator.py: "decider"
+      "decider": {
+        "response": "Based on my research..."
       }
     },
-    "step": 2
+    "step": 5
   },
-  
+
   "created_at": "2026-01-31T12:00:02.500000+00:00",
-  
+
   "parent_config": {
     "configurable": {
       "thread_id": "thread-abc123",
@@ -44,6 +53,6 @@
       "checkpoint_id": "1ef663ba-28f9-6ec4-8001-31981c2c39f8"
     }
   },
-  
+
   "tasks": []
 }
