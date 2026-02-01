@@ -148,12 +148,25 @@ def create_nodes(
     async def evaluator_node(state: AgentState) -> EvaluatorNodeResult:
         """Evaluate the current state and observations.
 
-        Analyzes recent tool outputs to assess progress.
+        Analyzes agent response and recent tool outputs to assess progress.
         """
         # [CC1a] Use extracted helper for observation formatting
         obs_text = _extract_observations(state.messages)
 
-        eval_prompt = EVALUATOR_PROMPT.format(task=state.task, observations=obs_text)
+        # Extract agent response content (last AIMessage without tool calls)
+        last_message = state.messages[-1] if state.messages else None
+        if isinstance(last_message, AIMessage):
+            response_text = (
+                str(last_message.content) if last_message.content else "No direct response"
+            )
+        else:
+            response_text = "No agent response yet"
+
+        eval_prompt = EVALUATOR_PROMPT.format(
+            task=state.task,
+            response=response_text,
+            observations=obs_text,
+        )
         messages = [HumanMessage(content=eval_prompt)]
 
         response = await llm.ainvoke(messages)
@@ -177,7 +190,20 @@ def create_nodes(
         # [CC1a] Use extracted helper for evaluation formatting
         eval_text = _extract_evaluations(state.evaluations)
 
-        rank_prompt = RANKER_PROMPT.format(task=state.task, evaluations=eval_text)
+        # Extract agent response content (last AIMessage without tool calls)
+        last_message = state.messages[-1] if state.messages else None
+        if isinstance(last_message, AIMessage):
+            response_text = (
+                str(last_message.content) if last_message.content else "No direct response"
+            )
+        else:
+            response_text = "No agent response yet"
+
+        rank_prompt = RANKER_PROMPT.format(
+            task=state.task,
+            response=response_text,
+            evaluations=eval_text,
+        )
         messages = [HumanMessage(content=rank_prompt)]
 
         response = await llm.ainvoke(messages)

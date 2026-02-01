@@ -21,6 +21,8 @@ EVALUATOR_PROMPT = """You are an evaluation agent. Your job is to assess the qua
 
 Task: {task}
 
+Agent Response: {response}
+
 Recent Observations:
 {observations}
 
@@ -36,6 +38,8 @@ Provide a brief evaluation (2-3 sentences per point).
 RANKER_PROMPT = """You are a ranking agent. Your job is to rank and provide feedback on the agent's performance.
 
 Task: {task}
+
+Agent Response: {response}
 
 Recent Evaluations:
 {evaluations}
