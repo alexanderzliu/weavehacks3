@@ -3,7 +3,7 @@
 import { writable, derived, type Writable } from 'svelte/store';
 import type { GameEvent, WSMessage, SeriesStatus, GamePhase, SnapshotPlayer } from './types';
 
-const WS_URL = 'ws://localhost:8000/ws';
+const WS_URL = 'ws://localhost:8001/ws';
 
 export interface ConnectionState {
 	connected: boolean;

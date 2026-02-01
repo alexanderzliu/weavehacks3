@@ -7,6 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from db import redis_cache
 from db.models import Series, Player, Game, GamePlayer, Cheatsheet, GameEvent
 from models.schemas import (
     SeriesConfig,
@@ -266,8 +267,49 @@ async def update_game_player(
 
 # ============ Cheatsheet CRUD ============
 
-async def get_latest_cheatsheet(db: AsyncSession, player_id: str) -> Optional[Cheatsheet]:
-    """Get the most recent cheatsheet version for a player."""
+def _serialize_cheatsheet(cheatsheet: Cheatsheet) -> dict:
+    """Serialize cheatsheet for Redis cache."""
+    return {
+        "id": cheatsheet.id,
+        "player_id": cheatsheet.player_id,
+        "version": cheatsheet.version,
+        "items": cheatsheet.items,
+        "created_after_game": cheatsheet.created_after_game,
+        "created_at": cheatsheet.created_at.isoformat() if cheatsheet.created_at else None,
+    }
+
+
+def _deserialize_cheatsheet(player_id: str, payload: dict) -> Optional[Cheatsheet]:
+    """Deserialize cached cheatsheet into a lightweight ORM instance."""
+    if not isinstance(payload, dict):
+        return None
+    version = payload.get("version")
+    if version is None:
+        return None
+
+    created_at = None
+    cached_created_at = payload.get("created_at")
+    if cached_created_at:
+        try:
+            created_at = datetime.fromisoformat(cached_created_at)
+        except ValueError:
+            created_at = None
+
+    return Cheatsheet(
+        id=payload.get("id"),
+        player_id=payload.get("player_id") or player_id,
+        version=version,
+        items=payload.get("items") or [],
+        created_after_game=payload.get("created_after_game"),
+        created_at=created_at,
+    )
+
+
+async def _get_latest_cheatsheet_from_db(
+    db: AsyncSession,
+    player_id: str,
+) -> Optional[Cheatsheet]:
+    """Get the most recent cheatsheet version for a player from SQLite."""
     result = await db.execute(
         select(Cheatsheet)
         .where(Cheatsheet.player_id == player_id)
@@ -275,6 +317,20 @@ async def get_latest_cheatsheet(db: AsyncSession, player_id: str) -> Optional[Ch
         .limit(1)
     )
     return result.scalar_one_or_none()
+
+
+async def get_latest_cheatsheet(db: AsyncSession, player_id: str) -> Optional[Cheatsheet]:
+    """Get the most recent cheatsheet version for a player."""
+    cached = await redis_cache.cache_get(player_id)
+    if cached:
+        cached_cheatsheet = _deserialize_cheatsheet(player_id, cached)
+        if cached_cheatsheet:
+            return cached_cheatsheet
+
+    cheatsheet = await _get_latest_cheatsheet_from_db(db, player_id)
+    if cheatsheet:
+        await redis_cache.cache_set(player_id, _serialize_cheatsheet(cheatsheet))
+    return cheatsheet
 
 
 async def create_cheatsheet_version(
@@ -285,7 +341,7 @@ async def create_cheatsheet_version(
 ) -> Cheatsheet:
     """Create a new cheatsheet version."""
     # Get current version
-    current = await get_latest_cheatsheet(db, player_id)
+    current = await _get_latest_cheatsheet_from_db(db, player_id)
     new_version = (current.version + 1) if current else 0
 
     cheatsheet = Cheatsheet(
@@ -297,6 +353,7 @@ async def create_cheatsheet_version(
     )
     db.add(cheatsheet)
     await db.flush()
+    await redis_cache.cache_invalidate(player_id)
     return cheatsheet
 
 

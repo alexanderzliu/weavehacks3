@@ -5,6 +5,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./mafia_ace.db"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     # AI Providers
     ANTHROPIC_API_KEY: str = ""

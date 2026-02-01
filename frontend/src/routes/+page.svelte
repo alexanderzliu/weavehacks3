@@ -12,11 +12,11 @@
 	let formName = $state('AI Mafia Tournament');
 	let formTotalGames = $state(5);
 	let formPlayers = $state([
-		{ name: 'Alice', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Bob', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Charlie', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Diana', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Eve', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' }
+		{ name: 'Alice', model_provider: 'wandb', model_name: 'qwen3-235b', fixed_role: '' },
+		{ name: 'Bob', model_provider: 'wandb', model_name: 'llama-3.3-70b', fixed_role: '' },
+		{ name: 'Charlie', model_provider: 'wandb', model_name: 'gpt-oss-20b', fixed_role: '' },
+		{ name: 'Diana', model_provider: 'wandb', model_name: 'llama-3.1-8b', fixed_role: '' },
+		{ name: 'Eve', model_provider: 'wandb', model_name: 'qwen3-235b', fixed_role: '' }
 	]);
 
 	onMount(async () => {
@@ -73,8 +73,8 @@
 				...formPlayers,
 				{
 					name: `Player ${formPlayers.length + 1}`,
-					model_provider: 'openai',
-					model_name: 'gpt-4o-mini',
+					model_provider: 'wandb',
+					model_name: 'qwen3-235b',
 					fixed_role: ''
 				}
 			];
