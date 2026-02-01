@@ -310,13 +310,6 @@
 										<span class="item-content">{item.content}</span>
 									</div>
 								{/each}
-
-								<!-- Placeholder for added items -->
-								{#each diff.added as _}
-									<div class="item placeholder">
-										<span class="placeholder-text">—</span>
-									</div>
-								{/each}
 							</div>
 						</div>
 
@@ -330,10 +323,23 @@
 								</span>
 							</div>
 							<div class="panel-content">
-								<!-- Placeholder for removed items -->
-								{#each diff.removed as _}
-									<div class="item placeholder">
-										<span class="placeholder-text">—</span>
+								<!-- Added items -->
+								{#each diff.added as item}
+									<div class="item added">
+										<div class="item-header">
+											<span class="item-category">{item.category}</span>
+											<div class="item-meta">
+												<span class="item-score">{formatScore(item.helpfulness_score)}</span>
+												<span class="change-indicator">New</span>
+											</div>
+										</div>
+										<span class="item-content">{item.content}</span>
+										{#if item.source_event}
+											<div class="source-citation">
+												<span class="citation-icon">💡</span>
+												<span class="citation-text">{item.source_event}</span>
+											</div>
+										{/if}
 									</div>
 								{/each}
 
@@ -385,26 +391,6 @@
 											<span class="item-score">{formatScore(item.helpfulness_score)}</span>
 										</div>
 										<span class="item-content">{item.content}</span>
-									</div>
-								{/each}
-
-								<!-- Added items -->
-								{#each diff.added as item}
-									<div class="item added">
-										<div class="item-header">
-											<span class="item-category">{item.category}</span>
-											<div class="item-meta">
-												<span class="item-score">{formatScore(item.helpfulness_score)}</span>
-												<span class="change-indicator">New</span>
-											</div>
-										</div>
-										<span class="item-content">{item.content}</span>
-										{#if item.source_event}
-											<div class="source-citation">
-												<span class="citation-icon">💡</span>
-												<span class="citation-text">{item.source_event}</span>
-											</div>
-										{/if}
 									</div>
 								{/each}
 							</div>
@@ -747,20 +733,6 @@
 	.item.modified {
 		background: rgba(212, 175, 55, 0.08);
 		border-left-color: var(--noir-gold, #d4af37);
-	}
-
-	.item.placeholder {
-		background: rgba(0, 0, 0, 0.1);
-		border-left-color: transparent;
-		min-height: 60px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.placeholder-text {
-		color: var(--text-muted, #6a5d4d);
-		opacity: 0.3;
 	}
 
 	.item-header {
