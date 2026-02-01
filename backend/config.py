@@ -5,12 +5,17 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./mafia_ace.db"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     # AI Providers
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
     CARTESIA_API_KEY: str = ""
+
+    # Voice (Pipecat)
+    DEEPGRAM_API_KEY: str = ""
+    DAILY_API_KEY: str = ""
 
     # Weave
     WANDB_API_KEY: str = ""

@@ -315,3 +315,58 @@ async def get_series_games(
         }
         for g in games
     ]
+
+
+# ============ Voice Session Routes ============
+
+@router.post("/series/{series_id}/join-voice")
+async def join_voice_session(
+    series_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Join a series as the human player with voice.
+
+    Creates a Daily room for voice communication and returns
+    the room URL and token for the client to connect.
+    """
+    from websocket.voice_session import voice_session_manager
+
+    series = await crud.get_series(db, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+
+    # Find human player in series
+    players = await crud.get_players_for_series(db, series_id)
+    human_player = next((p for p in players if p.is_human), None)
+
+    if not human_player:
+        raise HTTPException(
+            status_code=400,
+            detail="No human player slot in this series",
+        )
+
+    # Create or get voice session
+    session = await voice_session_manager.create_session(
+        series_id=series_id,
+        player_id=human_player.id,
+        player_name=human_player.name,
+    )
+
+    return {
+        "session_id": session.session_id,
+        "player_id": session.player_id,
+        "player_name": session.player_name,
+        "room_url": session.room_url,
+        "room_token": session.room_token,
+    }
+
+
+@router.delete("/series/{series_id}/voice-session")
+async def leave_voice_session(
+    series_id: str,
+):
+    """Leave a voice session."""
+    from websocket.voice_session import voice_session_manager
+
+    await voice_session_manager.destroy_session(series_id)
+    return {"message": "Voice session ended"}

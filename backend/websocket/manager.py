@@ -222,6 +222,37 @@ class ConnectionManager:
             # Don't fail subscription if initial snapshot fails
             print(f"Failed to send initial snapshot: {e}")
 
+    async def send_to_player(
+        self,
+        series_id: str,
+        player_id: str,
+        msg_type: str,
+        payload: dict,
+    ) -> bool:
+        """Send a message to a specific player in a series.
+
+        Args:
+            series_id: The series ID
+            player_id: The target player ID
+            msg_type: Message type
+            payload: Message payload
+
+        Returns:
+            True if message was sent successfully
+        """
+        async with self._lock:
+            subscriptions = self._subscriptions.get(series_id, []).copy()
+
+        message = WSMessage(type=msg_type, payload=payload)
+        for sub in subscriptions:
+            if sub.player_id == player_id:
+                try:
+                    await self._send_message(sub.websocket, message)
+                    return True
+                except Exception:
+                    pass
+        return False
+
 
 # Global connection manager instance
 ws_manager = ConnectionManager()
@@ -268,6 +299,34 @@ async def websocket_endpoint(websocket: WebSocket):
 
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong", "payload": {}})
+
+            # Human player input messages
+            elif msg_type == "human_speech":
+                # Human submitted speech text (fallback or transcription)
+                from websocket.voice_session import voice_session_manager
+                series_id = payload.get("series_id")
+                if series_id:
+                    await voice_session_manager.handle_human_input(
+                        series_id, "speech", payload
+                    )
+
+            elif msg_type == "human_vote":
+                # Human submitted their vote
+                from websocket.voice_session import voice_session_manager
+                series_id = payload.get("series_id")
+                if series_id:
+                    await voice_session_manager.handle_human_input(
+                        series_id, "vote", payload
+                    )
+
+            elif msg_type == "human_night_action":
+                # Human submitted night action
+                from websocket.voice_session import voice_session_manager
+                series_id = payload.get("series_id")
+                if series_id:
+                    await voice_session_manager.handle_human_input(
+                        series_id, "night_action", payload
+                    )
 
             else:
                 await ws_manager.send_error(websocket, f"Unknown message type: {msg_type}")

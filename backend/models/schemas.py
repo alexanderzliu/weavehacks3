@@ -12,6 +12,7 @@ class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GOOGLE = "google"
+    WANDB = "wandb"
 
 
 class Role(str, Enum):
@@ -75,6 +76,13 @@ class EventType(str, Enum):
     # System events
     ERROR = "error"
 
+    # Human voice events
+    HUMAN_TURN_START = "human_turn_start"  # Signal human to speak
+    HUMAN_TURN_END = "human_turn_end"  # Human's turn ended
+    WAITING_FOR_HUMAN = "waiting_for_human"  # Game is waiting for human input
+    HUMAN_VOTE_REQUIRED = "human_vote_required"  # Human needs to vote via UI
+    HUMAN_NIGHT_ACTION_REQUIRED = "human_night_action_required"  # Human needs night action
+
 
 # ============ Cheatsheet Models ============
 
@@ -125,6 +133,7 @@ class PlayerConfig(BaseModel):
     model_name: str
     fixed_role: Optional[Role] = None
     initial_cheatsheet: Optional[Cheatsheet] = None
+    is_human: bool = False  # If True, this player slot is for a human via voice
 
 
 class PlayerState(BaseModel):

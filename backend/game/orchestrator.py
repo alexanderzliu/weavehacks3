@@ -10,6 +10,8 @@ from weave.trace.weave_client import Call
 from db.database import get_db_session
 from db import crud
 from game.runner import GameRunner, assign_roles
+from game.voice_runner import VoiceGameRunner
+from game.human_adapter import HumanPlayerAdapter
 from game.reflection import ReflectionPipeline
 from models.schemas import (
     SeriesStatus,
@@ -20,6 +22,7 @@ from models.schemas import (
     ModelProvider,
 )
 from websocket.manager import ws_manager
+from websocket.voice_session import voice_session_manager
 
 
 def _series_display_name(call: Call) -> str:
@@ -95,8 +98,33 @@ async def run_series(series_id: str, series_name: str = "series") -> None:
 
             await assign_roles(game_id, player_ids, fixed_roles, game_seed)
 
-            # Run game
-            runner = GameRunner(game_id, series_id, game_seed)
+            # Check if any player is human
+            human_player = next(
+                (p for p in players if p.is_human),
+                None
+            )
+
+            # Create appropriate runner
+            if human_player:
+                # Create human adapter with WebSocket notification callback
+                async def ws_notify(msg_type: str, payload: dict):
+                    await ws_manager.send_to_player(
+                        series_id, human_player.id, msg_type, payload
+                    )
+
+                human_adapter = HumanPlayerAdapter(
+                    player_id=human_player.id,
+                    player_name=human_player.name,
+                    ws_notify=ws_notify,
+                )
+                voice_session_manager.set_adapter(series_id, human_adapter)
+
+                runner = VoiceGameRunner(
+                    game_id, series_id, human_adapter, game_seed
+                )
+            else:
+                runner = GameRunner(game_id, series_id, game_seed)
+
             winner = await runner.run()
 
             # Check for stop request before reflection

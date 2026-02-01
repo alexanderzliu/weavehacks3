@@ -48,6 +48,7 @@ async def create_series(
             name=player_config.name,
             model_provider=player_config.model_provider.value,
             model_name=player_config.model_name,
+            is_human=player_config.is_human,
         )
         db.add(player)
 

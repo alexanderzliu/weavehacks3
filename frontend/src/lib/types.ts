@@ -1,6 +1,6 @@
 // API Types matching the backend schemas
 
-export type ModelProvider = 'anthropic' | 'openai' | 'google';
+export type ModelProvider = 'anthropic' | 'openai' | 'google' | 'wandb';
 
 export type Role = 'mafia' | 'doctor' | 'deputy' | 'townsperson';
 
@@ -28,7 +28,13 @@ export type EventType =
 	| 'reflection_started'
 	| 'reflection_completed'
 	| 'cheatsheet_updated'
-	| 'error';
+	| 'error'
+	// Human voice events
+	| 'human_turn_start'
+	| 'human_turn_end'
+	| 'waiting_for_human'
+	| 'human_vote_required'
+	| 'human_night_action_required';
 
 export interface CheatsheetItem {
 	id: string;
@@ -52,6 +58,7 @@ export interface PlayerConfig {
 	model_name: string;
 	fixed_role?: Role;
 	initial_cheatsheet?: Cheatsheet;
+	is_human?: boolean;
 }
 
 export interface PlayerState {
@@ -167,7 +174,52 @@ export interface WSSubscribed {
 	};
 }
 
-export type WSMessage = WSEvent | WSSeriesStatus | WSSnapshot | WSError | WSSubscribed;
+// Human voice WebSocket messages
+export interface WSHumanTurnStart {
+	type: 'human_turn_start';
+	payload: {
+		player_id: string;
+		player_name: string;
+		action: 'speech' | 'vote' | 'night_action';
+	};
+}
+
+export interface WSHumanTurnEnd {
+	type: 'human_turn_end';
+	payload: {
+		player_id: string;
+	};
+}
+
+export interface WSHumanVoteRequired {
+	type: 'human_vote_required';
+	payload: {
+		player_id: string;
+		player_name: string;
+		valid_targets: string[];
+	};
+}
+
+export interface WSHumanNightActionRequired {
+	type: 'human_night_action_required';
+	payload: {
+		player_id: string;
+		player_name: string;
+		role: string;
+		valid_targets: string[];
+	};
+}
+
+export type WSMessage =
+	| WSEvent
+	| WSSeriesStatus
+	| WSSnapshot
+	| WSError
+	| WSSubscribed
+	| WSHumanTurnStart
+	| WSHumanTurnEnd
+	| WSHumanVoteRequired
+	| WSHumanNightActionRequired;
 
 // Cheatsheet history types
 export interface CheatsheetVersion {

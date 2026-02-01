@@ -1,20 +1,24 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { fetchSeriesById, fetchSeriesGames, stopSeries, startSeries, fetchSeriesPlayers, fetchPlayerCheatsheet, fetchGame, fetchGameEvents } from '$lib/api';
+	import { fetchSeriesById, fetchSeriesGames, stopSeries, startSeries, fetchSeriesPlayers, fetchPlayerCheatsheet, fetchGame, fetchGameEvents, joinVoiceSession } from '$lib/api';
 	import {
 		connect,
 		disconnect,
 		connectionState,
 		events,
 		snapshot,
-		seriesProgress
+		seriesProgress,
+		humanTurnState,
+		setHumanPlayerId
 	} from '$lib/websocket';
 	import type { SeriesResponse, Cheatsheet, GameResponse, GameEvent, GamePhase } from '$lib/types';
 	import RoundTable from '$lib/components/RoundTable.svelte';
 	import ChatLog from '$lib/components/ChatLog.svelte';
 	import PhaseIndicator from '$lib/components/PhaseIndicator.svelte';
 	import CheatsheetDiffModal from '$lib/components/CheatsheetDiffModal.svelte';
+	import VoiceControls from '$lib/components/VoiceControls.svelte';
+	import HumanActionPanel from '$lib/components/HumanActionPanel.svelte';
 
 	let series = $state<SeriesResponse | null>(null);
 	let games = $state<
@@ -61,6 +65,15 @@
 	let lastProcessedEventCount = $state(0); // Track how many events we've seen from $events
 	let liveInitialized = $state(false); // Track if we've done initial catch-up
 	let speechBubbleKey = $state(0); // Key to force SpeechBubble re-render
+
+	// Voice session state
+	let voiceSession = $state<{
+		roomUrl: string | null;
+		roomToken: string | null;
+		playerId: string | null;
+		playerName: string | null;
+	}>({ roomUrl: null, roomToken: null, playerId: null, playerName: null });
+	let hasHumanPlayer = $derived(series?.config.players.some((p) => p.is_human) ?? false);
 
 	// Player name to ID lookup
 	let playerIdByName = $derived.by(() => {
@@ -355,6 +368,29 @@
 			error = e instanceof Error ? e.message : 'Unknown error';
 		} finally {
 			loading = false;
+		}
+	}
+
+	// Join voice session for human player
+	async function handleJoinVoice() {
+		if (!series) return;
+
+		try {
+			const res = await joinVoiceSession(series.id);
+			if (res.ok) {
+				const data = await res.json();
+				voiceSession = {
+					roomUrl: data.room_url,
+					roomToken: data.room_token,
+					playerId: data.player_id,
+					playerName: data.player_name
+				};
+				setHumanPlayerId(data.player_id);
+			} else {
+				console.error('Failed to join voice session');
+			}
+		} catch (e) {
+			console.error('Error joining voice session:', e);
 		}
 	}
 
@@ -705,6 +741,29 @@
 				{#if $connectionState.error}
 					<span class="error-text">{$connectionState.error}</span>
 				{/if}
+
+				{#if hasHumanPlayer}
+					<div class="voice-section">
+						{#if voiceSession.roomUrl}
+							<VoiceControls
+								roomUrl={voiceSession.roomUrl}
+								roomToken={voiceSession.roomToken}
+								playerName={voiceSession.playerName || 'Human'}
+								isHumanTurn={$humanTurnState.isMyTurn && $humanTurnState.action === 'speech'}
+							/>
+						{:else}
+							<button class="join-voice-btn" onclick={handleJoinVoice}>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+									<path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+									<line x1="12" y1="19" x2="12" y2="23" />
+									<line x1="8" y1="23" x2="16" y2="23" />
+								</svg>
+								Join as Human Player
+							</button>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		{/if}
 
@@ -854,6 +913,14 @@
 				playerName={diffModalPlayer.name}
 				visible={true}
 				onClose={closeDiffModal}
+			/>
+		{/if}
+
+		<!-- Human Action Panel (vote/night action) -->
+		{#if hasHumanPlayer && voiceSession.playerId}
+			<HumanActionPanel
+				seriesId={series.id}
+				players={enrichedPlayers.map((p) => ({ name: p.name, is_alive: p.is_alive }))}
 			/>
 		{/if}
 	{/if}
@@ -1502,5 +1569,39 @@
 		.connection-bar {
 			flex-wrap: wrap;
 		}
+	}
+
+	/* ============================================
+	   VOICE CONTROLS
+	   ============================================ */
+	.voice-section {
+		margin-left: auto;
+	}
+
+	.join-voice-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: transparent;
+		border: 1px solid var(--accent-dim);
+		border-radius: 4px;
+		color: var(--accent);
+		font-family: var(--font-heading);
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.join-voice-btn:hover {
+		background: rgba(212, 175, 55, 0.1);
+		border-color: var(--accent);
+	}
+
+	.join-voice-btn svg {
+		width: 16px;
+		height: 16px;
 	}
 </style>

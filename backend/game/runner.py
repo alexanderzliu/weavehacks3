@@ -104,6 +104,7 @@ class GameRunner:
                     "name": gp.player.name,
                     "role": gp.role,
                     "is_alive": gp.is_alive,
+                    "is_human": gp.player.is_human,
                     "model_provider": ModelProvider(gp.player.model_provider),
                     "model_name": gp.player.model_name,
                     "cheatsheet": cs_schema,

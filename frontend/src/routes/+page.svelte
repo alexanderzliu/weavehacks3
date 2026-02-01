@@ -12,11 +12,11 @@
 	let formName = $state('AI Mafia Tournament');
 	let formTotalGames = $state(5);
 	let formPlayers = $state([
-		{ name: 'Alice', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Bob', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Charlie', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Diana', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' },
-		{ name: 'Eve', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '' }
+		{ name: 'Alice', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false },
+		{ name: 'Bob', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false },
+		{ name: 'Charlie', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false },
+		{ name: 'Diana', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false },
+		{ name: 'Eve', model_provider: 'openai', model_name: 'gpt-4o-mini', fixed_role: '', is_human: false }
 	]);
 
 	onMount(async () => {
@@ -46,7 +46,8 @@
 					name: p.name,
 					model_provider: p.model_provider,
 					model_name: p.model_name,
-					fixed_role: p.fixed_role || undefined
+					fixed_role: p.fixed_role || undefined,
+					is_human: p.is_human || undefined
 				}))
 			});
 			if (!res.ok) throw new Error('Failed to create series');
@@ -75,10 +76,19 @@
 					name: `Player ${formPlayers.length + 1}`,
 					model_provider: 'openai',
 					model_name: 'gpt-4o-mini',
-					fixed_role: ''
+					fixed_role: '',
+					is_human: false
 				}
 			];
 		}
+	}
+
+	function toggleHuman(index: number) {
+		// Only one human allowed - unset others
+		formPlayers = formPlayers.map((p, i) => ({
+			...p,
+			is_human: i === index ? !p.is_human : false
+		}));
 	}
 
 	function removePlayer(index: number) {
@@ -144,35 +154,58 @@
 
 					<div class="players-grid">
 						{#each formPlayers as player, i}
-							<div class="player-card" style="animation-delay: {i * 0.05}s">
+							<div class="player-card" class:is-human={player.is_human} style="animation-delay: {i * 0.05}s">
 								<div class="player-number">{i + 1}</div>
 								<div class="player-fields">
-									<input
-										type="text"
-										bind:value={player.name}
-										placeholder="Name"
-										class="player-name-input"
-									/>
-									<div class="player-model-row">
-										<select bind:value={player.model_provider}>
-											<option value="anthropic">Anthropic</option>
-											<option value="openai">OpenAI</option>
-											<option value="google">Google</option>
-										</select>
+									<div class="player-name-row">
 										<input
 											type="text"
-											bind:value={player.model_name}
-											placeholder="Model"
-											class="model-input"
+											bind:value={player.name}
+											placeholder="Name"
+											class="player-name-input"
 										/>
-										<select bind:value={player.fixed_role} class="role-select">
-											<option value="">Random</option>
-											<option value="mafia">Mafia</option>
-											<option value="doctor">Doctor</option>
-											<option value="deputy">Deputy</option>
-											<option value="townsperson">Townsperson</option>
-										</select>
+										<button
+											class="human-toggle"
+											class:active={player.is_human}
+											onclick={() => toggleHuman(i)}
+											title={player.is_human ? 'Playing as human' : 'Click to play as this character'}
+										>
+											<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+												<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+												<circle cx="12" cy="7" r="4" />
+											</svg>
+											{#if player.is_human}
+												<span>YOU</span>
+											{/if}
+										</button>
 									</div>
+									{#if !player.is_human}
+										<div class="player-model-row">
+											<select bind:value={player.model_provider}>
+												<option value="anthropic">Anthropic</option>
+												<option value="openai">OpenAI</option>
+												<option value="google">Google</option>
+												<option value="wandb">W&B (Open Source)</option>
+											</select>
+											<input
+												type="text"
+												bind:value={player.model_name}
+												placeholder="Model"
+												class="model-input"
+											/>
+											<select bind:value={player.fixed_role} class="role-select">
+												<option value="">Random</option>
+												<option value="mafia">Mafia</option>
+												<option value="doctor">Doctor</option>
+												<option value="deputy">Deputy</option>
+												<option value="townsperson">Townsperson</option>
+											</select>
+										</div>
+									{:else}
+										<div class="human-note">
+											You'll join this game via voice chat
+										</div>
+									{/if}
 								</div>
 								{#if formPlayers.length > 5}
 									<button class="remove-btn" onclick={() => removePlayer(i)}>
@@ -469,6 +502,62 @@
 
 	.player-name-input {
 		font-weight: 500;
+	}
+
+	.player-name-row {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.player-name-row .player-name-input {
+		flex: 1;
+	}
+
+	.human-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.4rem 0.6rem;
+		background: transparent;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		color: var(--text-muted);
+		font-family: var(--font-heading);
+		font-size: 0.65rem;
+		letter-spacing: 0.1em;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: none;
+	}
+
+	.human-toggle:hover {
+		border-color: var(--accent-dim);
+		color: var(--accent-dim);
+		box-shadow: none;
+	}
+
+	.human-toggle.active {
+		background: rgba(80, 200, 120, 0.15);
+		border-color: var(--success);
+		color: var(--success);
+	}
+
+	.human-toggle svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.player-card.is-human {
+		border-color: var(--success);
+		background: rgba(80, 200, 120, 0.05);
+	}
+
+	.human-note {
+		font-size: 0.85rem;
+		color: var(--success);
+		font-style: italic;
+		padding: 0.5rem 0;
 	}
 
 	.player-model-row {
