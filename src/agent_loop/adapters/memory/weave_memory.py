@@ -46,10 +46,10 @@ class WeaveMemoryStore:
     """Memory store using Weave objects.
 
     Persists all memory types to Weave for observability and retrieval.
+    Requires weave.init() to be called before instantiation.
     """
 
-    def __init__(self, project_name: str = "agent-loop"):
-        self.project_name = project_name
+    def __init__(self) -> None:
         self._patterns: dict[str, PatternEntry] = {}
         self._feedback: list[FeedbackEntry] = []
         self._rankings: list[RankingEntry] = []

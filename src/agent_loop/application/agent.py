@@ -54,10 +54,12 @@ class AgentLoop:
         model: str | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
-        weave_project: str = "agent-loop",
         tools: list[BaseTool] | None = None,
     ):
         """Initialize the agent loop.
+
+        Requires weave.init() to be called before instantiation.
+        For FastAPI, this happens in lifespan. For MCP, in main().
 
         Args:
             provider: LLM provider (openai, ollama, together, groq, openai-compatible).
@@ -65,12 +67,8 @@ class AgentLoop:
             model: Model name
             api_key: API key for provider
             base_url: Base URL for OpenAI-compatible endpoints
-            weave_project: Weave project name for tracing
             tools: List of LangChain tools to enable
         """
-        # Initialize Weave
-        weave.init(weave_project)
-
         # Create adapters
         self.llm: BaseChatModel = create_llm_provider(
             provider=provider,
@@ -78,7 +76,7 @@ class AgentLoop:
             api_key=api_key,
             base_url=base_url,
         )
-        self.memory: MemoryStore = WeaveMemoryStore(weave_project)
+        self.memory: MemoryStore = WeaveMemoryStore()
         self.tools: list[BaseTool] = tools or []
 
         # Build the graph
