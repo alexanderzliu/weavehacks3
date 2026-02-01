@@ -5,8 +5,9 @@ import json
 from typing import TypeVar
 
 import anthropic
-import google.generativeai as genai
 import openai
+from google import genai
+from google.genai import types as genai_types
 from pydantic import BaseModel
 
 from config import get_settings
@@ -77,7 +78,7 @@ class LLMClient:
         self._openai: openai.AsyncOpenAI | None = None
         self._openai_compatible: openai.AsyncOpenAI | None = None
         self._openrouter: openai.AsyncOpenAI | None = None
-        self._google_configured = False
+        self._google: genai.Client | None = None
         self._wandb: openai.AsyncOpenAI | None = None
 
     def _get_anthropic(self) -> anthropic.AsyncAnthropic:
@@ -106,10 +107,10 @@ class LLMClient:
             )
         return self._openrouter
 
-    def _ensure_google(self) -> None:
-        if not self._google_configured:
-            genai.configure(api_key=settings.GOOGLE_API_KEY)
-            self._google_configured = True
+    def _get_google(self) -> genai.Client:
+        if self._google is None:
+            self._google = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        return self._google
 
     def _get_wandb(self) -> openai.AsyncOpenAI:
         if self._wandb is None:
@@ -222,19 +223,18 @@ class LLMClient:
         system_prompt: str,
         user_prompt: str,
     ) -> str:
-        self._ensure_google()
-        # Google's generativeai library is synchronous, run in executor
-        loop = asyncio.get_event_loop()
-        model = genai.GenerativeModel(
-            model_name,
-            system_instruction=system_prompt,
+        client = self._get_google()
+        response = await client.aio.models.generate_content(
+            model=model_name,
+            contents=user_prompt,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=2048,
+            ),
         )
-
-        def sync_generate():
-            response = model.generate_content(user_prompt)
-            return response.text
-
-        return await loop.run_in_executor(None, sync_generate)
+        if response.text is None:
+            raise LLMError("Google Gemini returned empty response")
+        return response.text
 
     async def _wandb_complete(
         self,
