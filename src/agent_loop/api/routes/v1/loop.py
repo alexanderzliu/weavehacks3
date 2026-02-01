@@ -19,6 +19,9 @@ from agent_loop.graph.state import DEFAULT_MAX_ITERATIONS
 
 router = APIRouter(prefix="/v1/loop", tags=["loop"])
 
+# Weave trace display name [WV1a]
+TRACE_NAME_RUN_LOOP = "POST /v1/loop/run"
+
 
 def get_agent(request: Request) -> AgentLoop:
     """Dependency to get the shared agent from app.state.
@@ -70,7 +73,7 @@ class RunLoopResponse(BaseModel):
 
 
 @router.post("/run", response_model=RunLoopResponse)
-@weave.op(call_display_name="POST /v1/loop/run")
+@weave.op(call_display_name=TRACE_NAME_RUN_LOOP)
 async def run_loop(
     request: RunLoopRequest,
     agent: AgentLoop = Depends(get_agent),

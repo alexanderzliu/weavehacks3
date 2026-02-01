@@ -224,8 +224,13 @@ async def run_server() -> None:
 def main() -> None:
     """Entry point for MCP server.
 
-    Initializes Weave and the agent once, then runs the stdio server.
+    Loads environment, initializes Weave and agent, then runs the stdio server.
     """
+    # Load environment variables before any initialization
+    from dotenv import load_dotenv  # noqa: PLC0415
+
+    load_dotenv()
+
     # Check for --stdio flag
     if "--stdio" in sys.argv or len(sys.argv) == 1:
         # Initialize Weave and agent before running server
