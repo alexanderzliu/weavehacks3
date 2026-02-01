@@ -23,6 +23,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import weave
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -160,20 +161,30 @@ class AgentLoop:
             AgentLoopResult with response and metadata
         """
         thread_id = thread_id or str(uuid.uuid4())
+        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
 
-        # Create initial state
-        # With checkpointer, previous state for this thread_id is automatically loaded
-        initial_state = AgentState(
-            messages=[HumanMessage(content=task)],
-            task=task,
-            max_iterations=max_iterations,
-        )
+        # Check for existing checkpoint to enable thread continuity
+        # [LG1d] Thread persistence uses LangGraph checkpointing
+        new_message = HumanMessage(content=task)
+        checkpoint = self._checkpointer.get(config)
+        if checkpoint is not None:
+            # Resume: append new message to existing conversation
+            # Checkpoint state is loaded by LangGraph; we just need to pass the delta
+            initial_state = AgentState(
+                messages=[new_message],  # Reducer will append to existing
+                task=task,
+                max_iterations=max_iterations,
+            )
+        else:
+            # Fresh conversation
+            initial_state = AgentState(
+                messages=[new_message],
+                task=task,
+                max_iterations=max_iterations,
+            )
 
         # Run the graph
-        config = {"configurable": {"thread_id": thread_id}}
         final_state_dict = await self._compiled.ainvoke(initial_state, config=config)  # type: ignore[arg-type]
-
-        # Parse result
         result_state = AgentState(**final_state_dict)
 
         return AgentLoopResult(
