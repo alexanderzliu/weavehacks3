@@ -1,7 +1,46 @@
 <script lang="ts">
 	import '../app.css';
+	import { browser } from '$app/environment';
 
 	let { children } = $props();
+
+	// Theme state - persisted to localStorage
+	let isLightTheme = $state(false);
+
+	// Initialize theme from localStorage on mount
+	$effect(() => {
+		if (browser) {
+			const savedTheme = localStorage.getItem('mafia-ace-theme');
+			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+			if (savedTheme === 'light') {
+				isLightTheme = true;
+			} else if (savedTheme === 'dark') {
+				isLightTheme = false;
+			} else {
+				// No preference saved, use system preference (dark by default for this app)
+				isLightTheme = !prefersDark;
+			}
+		}
+	});
+
+	// Apply theme class to document root
+	$effect(() => {
+		if (browser) {
+			if (isLightTheme) {
+				document.documentElement.classList.add('light-theme');
+			} else {
+				document.documentElement.classList.remove('light-theme');
+			}
+		}
+	});
+
+	function toggleTheme() {
+		isLightTheme = !isLightTheme;
+		if (browser) {
+			localStorage.setItem('mafia-ace-theme', isLightTheme ? 'light' : 'dark');
+		}
+	}
 </script>
 
 <svelte:head>
@@ -30,6 +69,29 @@
 				<span class="tagline">Agents Learning the Metagame of Mafia</span>
 				<span class="tagline-diamond"></span>
 			</div>
+			<button
+				class="theme-toggle"
+				onclick={toggleTheme}
+				aria-label={isLightTheme ? 'Switch to dark theme' : 'Switch to light theme'}
+				title={isLightTheme ? 'Switch to dark theme' : 'Switch to light theme'}
+			>
+				<span class="toggle-track">
+					<span class="toggle-thumb" class:light={isLightTheme}>
+						{#if isLightTheme}
+							<!-- Sun icon -->
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<circle cx="12" cy="12" r="5"/>
+								<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+							</svg>
+						{:else}
+							<!-- Moon icon -->
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+							</svg>
+						{/if}
+					</span>
+				</span>
+			</button>
 		</nav>
 	</header>
 
@@ -58,14 +120,15 @@
 	   HEADER - Speakeasy Bar Style
 	   ============================================ */
 	header {
-		background: linear-gradient(180deg, #141412 0%, #0a0908 100%);
+		background: var(--header-gradient);
 		border-bottom: 1px solid var(--border-gold);
 		padding: 1.25rem 2rem;
 		position: relative;
 		z-index: 100;
+		transition: background 0.4s ease, border-color 0.4s ease;
 	}
 
-	/* Subtle wood grain texture on header */
+	/* Subtle sheen texture on header */
 	header::before {
 		content: '';
 		position: absolute;
@@ -73,9 +136,9 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background:
-			linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.02) 50%, transparent 100%);
+		background: var(--header-sheen);
 		pointer-events: none;
+		transition: background 0.4s ease;
 	}
 
 	/* Gold accent line at bottom */
@@ -232,6 +295,75 @@
 	/* ============================================
 	   RESPONSIVE
 	   ============================================ */
+	/* ============================================
+	   THEME TOGGLE - Art Deco Switch
+	   ============================================ */
+	.theme-toggle {
+		all: unset;
+		cursor: pointer;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		align-items: center;
+	}
+
+	.toggle-track {
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		width: 52px;
+		height: 28px;
+		background: var(--bg-primary);
+		border: 1px solid var(--border-gold);
+		border-radius: 14px;
+		padding: 2px;
+		transition: all 0.3s ease;
+		position: relative;
+		box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+	}
+
+	.theme-toggle:hover .toggle-track {
+		border-color: var(--accent);
+		box-shadow:
+			inset 0 2px 4px rgba(0, 0, 0, 0.2),
+			0 0 12px var(--accent-glow);
+	}
+
+	.toggle-thumb {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
+		height: 22px;
+		background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+		border-radius: 50%;
+		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+		transform: translateX(0);
+	}
+
+	.toggle-thumb.light {
+		transform: translateX(24px);
+	}
+
+	.toggle-thumb svg {
+		width: 12px;
+		height: 12px;
+		color: var(--bg-primary);
+		transition: transform 0.3s ease;
+	}
+
+	.theme-toggle:hover .toggle-thumb svg {
+		transform: rotate(15deg);
+	}
+
+	.toggle-thumb.light svg {
+		color: var(--button-text);
+	}
+
+	/* ============================================
+	   RESPONSIVE
+	   ============================================ */
 	@media (max-width: 768px) {
 		header {
 			padding: 1rem;
@@ -256,6 +388,12 @@
 
 		.logo-accent {
 			font-size: 0.75rem;
+		}
+
+		.theme-toggle {
+			position: absolute;
+			top: 1rem;
+			right: 1rem;
 		}
 	}
 </style>

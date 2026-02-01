@@ -158,6 +158,7 @@
 											<option value="anthropic">Anthropic</option>
 											<option value="openai">OpenAI</option>
 											<option value="google">Google</option>
+											<option value="openai_compatible">OpenAI Compatible</option>
 										</select>
 										<input
 											type="text"

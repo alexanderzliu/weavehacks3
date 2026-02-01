@@ -1,8 +1,8 @@
 /* ============================================
-   MAFIA ACE - 1920s SPEAKEASY NOIR THEME
+   MAFIA ACE - DUAL THEME DESIGN SYSTEM
    ============================================
-   A dark, elegant aesthetic inspired by prohibition-era
-   speakeasies, film noir, and Art Deco design.
+   Dark: 1920s Speakeasy Noir - smoky, mysterious
+   Light: Golden Hour Gatsby - sun-drenched elegance
    ============================================ */
 
 /* Import noir theme variables and effects */
@@ -14,7 +14,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
 /* ============================================
-   CSS VARIABLES - NOIR DESIGN SYSTEM
+   CSS VARIABLES - DARK THEME (DEFAULT)
    ============================================ */
 :root {
 	/* Core Noir Palette - extended */
@@ -66,6 +66,79 @@
 	--font-heading: 'Bebas Neue', Impact, sans-serif;
 	--font-body: 'Cormorant Garamond', Georgia, serif;
 	--font-mono: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+
+	/* Theme-specific effects */
+	--overlay-grain-opacity: 0.015;
+	--overlay-vignette: radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(0,0,0,0.4) 100%);
+	--header-gradient: linear-gradient(180deg, #141412 0%, #0a0908 100%);
+	--header-sheen: linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.02) 50%, transparent 100%);
+	--button-gradient: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+	--button-text: var(--bg-primary);
+}
+
+/* ============================================
+   LIGHT THEME - GOLDEN HOUR GATSBY
+   ============================================
+   Warm cream and ivory with rich burgundy & gold
+   Like stepping from the speakeasy into the sun
+   ============================================ */
+:root.light-theme {
+	/* Core Palette - Warm Creams & Ivories */
+	--bg-primary: #faf6f0;
+	--bg-secondary: #f5efe6;
+	--bg-tertiary: #ede5d8;
+	--bg-card: linear-gradient(135deg, #fffcf7 0%, #f8f3eb 100%);
+	--bg-card-solid: #fdfaf5;
+	--bg-elevated: #ffffff;
+
+	/* Accent Colors - Rich Burgundy & Gold */
+	--accent: #8b2942;
+	--accent-hover: #a33350;
+	--accent-dim: #6e2035;
+	--accent-glow: rgba(139, 41, 66, 0.2);
+
+	/* Role/Status Colors - Adjusted for light bg */
+	--success: #2d7a4a;
+	--warning: #b8860b;
+	--danger: #a81e35;
+	--mafia: #a81e35;
+	--town: #8b6914;
+
+	/* Text Colors - Rich Dark Tones */
+	--text-primary: #2a1f1a;
+	--text-secondary: #5c4d42;
+	--text-muted: #8a7b6e;
+	--text-gold: #8b6914;
+	--text-cream: #2a1f1a;
+
+	/* Borders & Shadows - Warm & Subtle */
+	--border: #e0d6c8;
+	--border-gold: #c9b896;
+	--border-accent: #8b2942;
+	--shadow-noir: 0 10px 40px rgba(42, 31, 26, 0.12);
+	--shadow-glow-gold: 0 0 20px rgba(139, 41, 66, 0.1);
+	--shadow-card:
+		0 4px 20px rgba(42, 31, 26, 0.08),
+		0 0 0 1px rgba(201, 184, 150, 0.4);
+
+	/* Wood & Felt - Lighter Variants */
+	--wood-dark: #c9b896;
+	--wood-medium: #ddd2be;
+	--wood-light: #ede5d8;
+	--felt-green: #d4e5db;
+
+	/* Theme-specific effects */
+	--overlay-grain-opacity: 0.008;
+	--overlay-vignette: radial-gradient(ellipse at center, transparent 0%, transparent 70%, rgba(42, 31, 26, 0.06) 100%);
+	--header-gradient: linear-gradient(180deg, #fffcf7 0%, #f5efe6 100%);
+	--header-sheen: linear-gradient(90deg, transparent 0%, rgba(139, 41, 66, 0.03) 50%, transparent 100%);
+	--button-gradient: linear-gradient(135deg, #8b2942 0%, #6e2035 100%);
+	--button-text: #fffcf7;
+
+	/* Phase colors for light theme */
+	--phase-night: linear-gradient(135deg, #e8e0f0 0%, #d8d0e8 50%, #e8e0f0 100%);
+	--phase-discussion: linear-gradient(135deg, #f5efe6 0%, #ede5d8 50%, #f5efe6 100%);
+	--phase-voting: linear-gradient(135deg, #f5e8ea 0%, #edd8dc 50%, #f5e8ea 100%);
 }
 
 /* ============================================
@@ -86,6 +159,7 @@ body {
 	line-height: 1.7;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 /* Film Grain Overlay - Global */
@@ -98,8 +172,9 @@ body::before {
 	height: 100%;
 	pointer-events: none;
 	z-index: 99999;
-	opacity: 0.015;
+	opacity: var(--overlay-grain-opacity, 0.015);
 	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+	transition: opacity 0.4s ease;
 }
 
 /* Ambient Vignette - Global */
@@ -112,7 +187,8 @@ body::after {
 	height: 100%;
 	pointer-events: none;
 	z-index: 99998;
-	background: radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(0,0,0,0.4) 100%);
+	background: var(--overlay-vignette);
+	transition: background 0.4s ease;
 }
 
 /* ============================================
@@ -174,13 +250,13 @@ button {
 	padding: 0.75rem 1.5rem;
 	border: none;
 	border-radius: 2px;
-	background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
-	color: var(--bg-primary);
+	background: var(--button-gradient);
+	color: var(--button-text);
 	transition: all 0.3s ease;
 	position: relative;
 	overflow: hidden;
 	box-shadow:
-		0 4px 15px rgba(212, 175, 55, 0.2),
+		0 4px 15px var(--accent-glow),
 		inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -198,7 +274,7 @@ button::before {
 button:hover {
 	background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent) 100%);
 	box-shadow:
-		0 6px 25px rgba(212, 175, 55, 0.35),
+		0 6px 25px var(--accent-glow),
 		inset 0 1px 0 rgba(255, 255, 255, 0.3);
 	transform: translateY(-1px);
 }
