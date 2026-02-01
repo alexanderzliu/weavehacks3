@@ -152,6 +152,7 @@ class ConnectionManager:
         alive_player_ids: list[str],
         phase: str,
         day_number: int,
+        players: Optional[list[dict]] = None,
     ) -> None:
         """Broadcast game state snapshot."""
         async with self._lock:
@@ -164,6 +165,7 @@ class ConnectionManager:
                 "alive_player_ids": alive_player_ids,
                 "phase": phase,
                 "day_number": day_number,
+                "players": players or [],
             },
         )
         for sub in subscriptions:

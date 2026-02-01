@@ -38,15 +38,26 @@
 		return map;
 	});
 
-	// Enriched players with alive status for RoundTable
+	// Enriched players with alive status and roles for RoundTable
 	let enrichedPlayers = $derived.by(() => {
 		if (!series) return [];
-		const aliveIds = $snapshot?.alive_player_ids || [];
+
+		// If we have a snapshot with players, use that (includes roles)
+		if ($snapshot?.players?.length) {
+			return $snapshot.players.map((p) => ({
+				id: p.name,
+				name: p.name,
+				role: p.role,
+				is_alive: p.is_alive
+			}));
+		}
+
+		// Fallback to series config if no game is running
 		return series.config.players.map((p) => ({
-			id: p.name, // Use name as ID (actual IDs assigned at game start)
+			id: p.name,
 			name: p.name,
-			role: undefined, // Roles revealed at game end
-			is_alive: aliveIds.length === 0 || aliveIds.includes(p.name)
+			role: undefined,
+			is_alive: true
 		}));
 	});
 
@@ -337,7 +348,7 @@
 					speechContent={$currentSpeaker?.content || null}
 					speakerName={$currentSpeaker?.playerName || null}
 					votes={$currentVotes}
-					showRoles={false}
+					showRoles={true}
 				/>
 
 				<ChatLog events={$events} />

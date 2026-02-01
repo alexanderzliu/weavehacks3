@@ -1,7 +1,7 @@
 // WebSocket connection manager with Svelte stores
 
 import { writable, derived, type Writable } from 'svelte/store';
-import type { GameEvent, WSMessage, SeriesStatus, GamePhase } from './types';
+import type { GameEvent, WSMessage, SeriesStatus, GamePhase, SnapshotPlayer } from './types';
 
 const WS_URL = 'ws://localhost:8000/ws';
 
@@ -16,6 +16,7 @@ export interface GameSnapshot {
 	alive_player_ids: string[];
 	phase: GamePhase;
 	day_number: number;
+	players: SnapshotPlayer[];
 }
 
 export interface SeriesProgress {

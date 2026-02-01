@@ -12,11 +12,11 @@
 	let formName = $state('AI Mafia Tournament');
 	let formTotalGames = $state(5);
 	let formPlayers = $state([
-		{ name: 'Alice', model_provider: 'anthropic', model_name: 'claude-sonnet-4-20250514' },
-		{ name: 'Bob', model_provider: 'anthropic', model_name: 'claude-sonnet-4-20250514' },
-		{ name: 'Charlie', model_provider: 'anthropic', model_name: 'claude-sonnet-4-20250514' },
-		{ name: 'Diana', model_provider: 'anthropic', model_name: 'claude-sonnet-4-20250514' },
-		{ name: 'Eve', model_provider: 'anthropic', model_name: 'claude-sonnet-4-20250514' }
+		{ name: 'Alice', model_provider: 'openai', model_name: 'gpt-4o-mini' },
+		{ name: 'Bob', model_provider: 'openai', model_name: 'gpt-4o-mini' },
+		{ name: 'Charlie', model_provider: 'openai', model_name: 'gpt-4o-mini' },
+		{ name: 'Diana', model_provider: 'openai', model_name: 'gpt-4o-mini' },
+		{ name: 'Eve', model_provider: 'openai', model_name: 'gpt-4o-mini' }
 	]);
 
 	onMount(async () => {
@@ -68,8 +68,8 @@
 				...formPlayers,
 				{
 					name: `Player ${formPlayers.length + 1}`,
-					model_provider: 'anthropic',
-					model_name: 'claude-sonnet-4-20250514'
+					model_provider: 'openai',
+					model_name: 'gpt-4o-mini'
 				}
 			];
 		}

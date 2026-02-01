@@ -115,6 +115,13 @@ class GameRunner:
     def _get_dead_players(self) -> list[dict]:
         return [p for p in self._game_players if not p["is_alive"]]
 
+    def _get_players_for_snapshot(self) -> list[dict]:
+        """Get player data for WebSocket snapshot."""
+        return [
+            {"name": p["name"], "role": p["role"], "is_alive": p["is_alive"]}
+            for p in self._game_players
+        ]
+
     def _get_player_by_name(self, name: str) -> Optional[dict]:
         for p in self._game_players:
             if p["name"].lower() == name.lower():
@@ -227,6 +234,7 @@ class GameRunner:
             [p["name"] for p in alive],
             "day",
             self._day_number,
+            self._get_players_for_snapshot(),
         )
 
         # Reset day discussion
@@ -388,6 +396,7 @@ class GameRunner:
                 [p["name"] for p in alive],
                 "day",
                 self._day_number,
+                self._get_players_for_snapshot(),
             )
 
         return lynched_player
@@ -411,6 +420,7 @@ class GameRunner:
             [p["name"] for p in alive],
             "night",
             self._day_number,
+            self._get_players_for_snapshot(),
         )
 
         # Get night actions
@@ -455,6 +465,7 @@ class GameRunner:
                 [p["name"] for p in alive],
                 "night",
                 self._day_number,
+                self._get_players_for_snapshot(),
             )
 
         return self._check_win_condition()

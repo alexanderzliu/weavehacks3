@@ -133,6 +133,12 @@ export interface WSSeriesStatus {
 	};
 }
 
+export interface SnapshotPlayer {
+	name: string;
+	role: Role;
+	is_alive: boolean;
+}
+
 export interface WSSnapshot {
 	type: 'snapshot';
 	payload: {
@@ -140,6 +146,7 @@ export interface WSSnapshot {
 		alive_player_ids: string[];
 		phase: GamePhase;
 		day_number: number;
+		players: SnapshotPlayer[];
 	};
 }
 
